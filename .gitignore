@@ -47,6 +47,9 @@ yarn-error.log*
 logs/
 *.log
 
+# AWOC-specific logs (created by install/validate scripts)
+.awoc-*.log
+
 # Temporary files
 *.tmp
 *.temp
@@ -54,5 +57,6 @@ logs/
 
 # Local configuration (should not be committed)
 settings.local.json
+awoc-settings.json
 .env
 .env.*

@@ -1,13 +1,16 @@
 {
+  "_comment": "AWOC Configuration Template - Lightweight, simple configuration",
   "version": "0.1.0",
   "model": "claude-3-5-sonnet-20241022",
   "includeCoAuthoredBy": false,
   "outputStyle": "development",
+
   "env": {
     "AWOC_MAINTAIN_PROJECT_WORKING_DIR": "1",
     "BASH_MAX_TIMEOUT_MS": "120000",
     "AWOC_MAX_OUTPUT_TOKENS": "8192"
   },
+
   "permissions": {
     "allow": [
       "Bash",
@@ -32,6 +35,7 @@
       "Bash(git push:*)"
     ]
   },
+
   "agents": {
     "default": "api-researcher",
     "available": [
@@ -43,6 +47,7 @@
       "creative-assistant"
     ]
   },
+
   "commands": {
     "enabled": ["session-start", "session-end"]
   }
