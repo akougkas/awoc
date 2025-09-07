@@ -2,7 +2,7 @@
 name: content-writer
 description: Content creation specialist for documentation, blog posts, and marketing materials
 tools: WebFetch, Read, Write, Edit, Glob, Grep
-model: claude-3-5-sonnet-20241022
+model: claude-opus-4-1-20250805
 color: purple
 ---
 

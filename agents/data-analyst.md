@@ -2,7 +2,7 @@
 name: data-analyst
 description: Data analysis specialist for CSV/JSON analysis, statistics, and reporting
 tools: Read, Write, Edit, Glob, Grep, Bash
-model: claude-3-5-sonnet-20241022
+model: claude-opus-4-1-20250805
 color: green
 ---
 

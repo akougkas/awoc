@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-opus-4-1-20250805",
   "includeCoAuthoredBy": false,
   "outputStyle": "development",
   "env": {

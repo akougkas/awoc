@@ -127,8 +127,8 @@ main() {
 
     # Initialize
     init_logging
-    check_requirements
     detect_cli
+    check_requirements
 
     # Create target directory if it doesn't exist
     mkdir -p "$TARGET_DIR" 2>/dev/null || error_exit "Failed to create target directory: $TARGET_DIR"

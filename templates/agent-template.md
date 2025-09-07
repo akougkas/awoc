@@ -2,7 +2,7 @@
 name: agent-name
 description: Brief description of agent's primary function and value proposition
 tools: Tool1, Tool2, Tool3
-model: claude-3-5-sonnet-20241022
+model: claude-opus-4-1-20250805
 color: blue
 ---
 

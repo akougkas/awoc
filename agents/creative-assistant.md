@@ -2,7 +2,7 @@
 name: creative-assistant
 description: Creative specialist for brainstorming, ideation, and innovative problem-solving
 tools: WebFetch, Read, Write, Edit, Glob, Grep
-model: claude-3-5-sonnet-20241022
+model: claude-opus-4-1-20250805
 color: magenta
 ---
 

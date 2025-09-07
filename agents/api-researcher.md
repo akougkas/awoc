@@ -2,7 +2,7 @@
 name: api-researcher
 description: Technical documentation specialist. Researches APIs, frameworks, and best practices. Caches essential knowledge for development teams.
 tools: WebFetch, Read, Glob, Grep
-model: claude-3-5-sonnet-20241022
+model: claude-opus-4-1-20250805
 color: blue
 ---
 
