@@ -15,10 +15,16 @@ Status: !`git status -s`
 !`if [ -n "$(git status --porcelain)" ]; then echo "⚠️  Uncommitted changes detected - commit or stash first"; exit 1; fi`
 
 ### Load Context
-@README.md (project overview)
+@OPUS-PLAN.md (master implementation plan)
+@CLAUDE.md (development guide)
+
+### Available Subagents
+- `/agents architect` - Design & complex analysis (Opus, 16k thinking)
+- `/agents docs-fetcher` - Research & examples (Haiku+MCP)
+- `/agents workforce` - Code generation (Sonnet)
 
 ### Session Task
 $ARGUMENTS
 
 ### Ready to Begin
-Repository is clean and ready for development.
+Repository clean. Subagents ready. Development session started.
