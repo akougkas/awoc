@@ -2,7 +2,7 @@
 name: session-start
 description: Initialize development session with clean state
 argument-hint: [task-description]
-allowed-tools: Bash(git status), Bash(git branch), Read
+allowed-tools: Bash, Read
 ---
 
 ## Session Start

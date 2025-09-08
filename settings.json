@@ -45,5 +45,29 @@
   },
   "commands": {
     "enabled": ["session-start", "session-end"]
+  },
+  "context": {
+    "monitoring": {
+      "enabled": true,
+      "auto_track": true,
+      "thresholds": {
+        "warning": 70,
+        "optimization": 80,
+        "critical": 90,
+        "max_tokens": 200000
+      }
+    },
+    "optimization": {
+      "auto_prime": true,
+      "auto_handoff": true,
+      "compression": true
+    }
+  },
+  "hooks": {
+    "enabled": true,
+    "PreToolUse": "scripts/context-monitor.sh track ${AGENT:-unknown} tool_use ${ESTIMATED_TOKENS:-0} execution",
+    "UserPromptSubmit": "scripts/context-monitor.sh check ${CURRENT_CONTEXT_TOKENS:-0}",
+    "SessionEnd": "scripts/token-logger.sh report json today",
+    "PreCompact": "scripts/context-monitor.sh optimize auto"
   }
 }
