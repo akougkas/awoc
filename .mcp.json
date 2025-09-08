@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "brightdata": {
+      "command": "npx", 
+      "args": ["-y", "@brightdata/mcp"],
+      "env": {
+        "API_TOKEN": "placeholder-api-token-replace-with-real-key",
+        "RATE_LIMIT": "50/30m",
+        "PRO_MODE": "false"
+      }
+    }
+  }
+}
