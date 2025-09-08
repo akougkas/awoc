@@ -101,111 +101,162 @@ Replace static 80-line agents with:
 - Track improvements quantitatively
 - Never break existing functionality
 
-## Phase-by-Phase Implementation
+## Subagent Orchestration Protocol
 
-### Phase 1: Context Monitoring Infrastructure
-**Goal**: Build measurement foundation
+### Available Subagents
 
-**Tasks**:
-1. **Create `scripts/context-monitor.sh`**
-   - Track token usage in real-time
-   - Log context state transitions
-   - Generate usage reports
-   - Trigger warnings at thresholds
+You have three specialized subagents in `.claude/agents/`:
 
-2. **Create `scripts/token-logger.sh`**
-   - Log operations with agent attribution
-   - Budget tracking per agent
-   - Usage analytics and reporting
+1. **architect** (Opus, 16768 thinking) - Senior engineer for design and complex analysis
+2. **docs-fetcher** (Haiku + MCP) - Fast research for APIs, code snippets, solutions
+3. **workforce** (Sonnet) - High-performance code generation and testing
 
-3. **Update `settings.json`**
-   - Add context monitoring config
-   - Add hooks for automatic tracking
-   - Enable real-time monitoring
+### Development Workflow Cycles
 
-4. **Test Infrastructure**
-   - Validate scripts work correctly
-   - Confirm hooks trigger properly
-   - Verify data accuracy
+#### Standard Feature Development Cycle
+```
+New Feature X:
+1. architect(design X) → produces technical specification
+2. docs-fetcher(research X) → finds APIs, examples, best practices
+3. workforce(implement X) → generates code and tests
+4. architect(review X) → validates implementation
+5. workforce(commit X) → finalizes and commits
+```
 
-**Success Criteria**: Can see real-time token usage per operation
+#### Bug Investigation Cycle
+```
+Bug Y:
+1. architect(analyze Y) → investigates root cause
+2. docs-fetcher(find solutions Y) → researches fix approaches
+3. workforce(fix Y) → implements solution with tests
+4. architect(verify fix Y) → confirms resolution
+5. workforce(commit fix) → finalizes fix
+```
 
-### Phase 2: Dynamic Priming System
-**Goal**: Replace static context with on-demand loading
+### Agent Orchestration Commands
 
-**Tasks**:
-1. **Create `commands/prime-dev.md`**
-   - Master priming command
-   - Scenario-specific loading
-   - Context budget management
+#### Parallel Research
+```bash
+# Launch parallel research
+/agents exec docs-fetcher "Research Stripe API for payment processing"
+/agents exec docs-fetcher "Find React hooks best practices" 
+# Agents work simultaneously, report back independently
+```
 
-2. **Create priming scenarios**
-   - `commands/priming/prime-api-integration.md`
-   - `commands/priming/prime-bug-fixing.md`
-   - `commands/priming/prime-feature-dev.md`
+#### Sequential Design-to-Code
+```bash
+# Design phase
+/agents exec architect "Design user authentication system with JWT"
 
-3. **Reduce one agent to core**
-   - Choose simplest agent first
-   - Reduce to 10 lines essential
-   - Test with priming system
+# Wait for design, then implement
+/agents exec workforce "Implement authentication based on architect's design"
 
-4. **Validate 70% reduction**
-   - Measure token savings
-   - Confirm functionality preserved
-   - Document improvement
+# Review and finalize
+/agents exec architect "Review authentication implementation for security"
+```
 
-**Success Criteria**: One agent works with 70% fewer tokens
+#### Complex Feature Pipeline
+```bash
+# Full pipeline for major feature
+/agents exec architect "Design shopping cart system with persistence"
+# → architect produces: API design, data models, component structure
 
-### Phase 3: Context Handoff Protocol
-**Goal**: Enable session continuity
+/agents exec docs-fetcher "Research e-commerce cart patterns and libraries"
+# → docs-fetcher produces: recommended libraries, code examples, best practices
 
-**Tasks**:
-1. **Design handoff bundle format**
-   - JSON schema for context state
-   - Knowledge graph representation
-   - Compression and storage
+/agents exec workforce "Implement shopping cart system using architect design and docs-fetcher research"
+# → workforce produces: complete implementation with tests
 
-2. **Create handoff commands**
-   - `commands/handoff-save.md`
-   - `commands/handoff-load.md`
-   - Automatic handoff hooks
+/agents exec architect "Review shopping cart implementation for scalability and security"
+# → architect validates: performance, security, code quality
+```
 
-3. **Test session continuity**
-   - Save context mid-session
-   - Restore in fresh session
-   - Verify 60-70% context recovery
+### Communication Protocol
 
-**Success Criteria**: Can pause/resume work seamlessly
+#### Task Handoffs
+1. **Clear Specifications**: Each agent receives specific, actionable tasks
+2. **Context Sharing**: Agents reference each other's outputs
+3. **Iterative Refinement**: Agents can request clarification or additional work
+4. **Final Integration**: All outputs merge into working system
 
-### Phase 4: Hierarchical Delegation
-**Goal**: Parallel agent processing
+#### Result Integration
+```markdown
+# Example handoff pattern:
+1. Architect produces: "Design doc in design-auth-system.md"
+2. Docs-fetcher produces: "Research findings in research-auth-libraries.md"  
+3. Workforce produces: "Implementation in src/auth/ with tests/"
+4. Architect produces: "Review feedback in review-auth-implementation.md"
+```
 
-**Tasks**:
-1. **Create sub-agent templates**
-   - Lightweight 3k token agents
-   - Specialized for single tasks
-   - Report-only communication
+### Subagent Capabilities
 
-2. **Implement delegation system**
-   - `commands/delegate.md` using Task tool
-   - Background agent launcher
-   - Result integration without context bloat
+#### Architect Strengths
+- **Complex Problem Analysis**: Deep investigation of difficult issues
+- **System Design**: High-level architecture and component relationships
+- **Code Review**: Quality assessment and improvement suggestions
+- **Technical Leadership**: Decision making for complex trade-offs
 
-3. **Test parallel execution**
-   - Multiple sub-agents simultaneously
-   - Background task processing
-   - Resource coordination
+#### Docs-fetcher Strengths  
+- **Fast Research**: Quick answers to technical questions
+- **API Discovery**: Finding documentation and usage examples
+- **Technology Evaluation**: Comparing options and recommending approaches
+- **Code Example Finding**: Working snippets for specific functionality
 
-**Success Criteria**: Can run 3+ agents concurrently
+#### Workforce Strengths
+- **Rapid Implementation**: Fast, high-quality code generation
+- **Test Coverage**: Comprehensive testing strategies
+- **Code Integration**: Clean integration with existing codebase
+- **Bug Fixes**: Quick resolution of implementation issues
 
-### Phase 5: Production Hardening
-**Goal**: Enterprise-ready deployment
+### Optimization Strategies
 
-**Tasks**:
-1. Enterprise policy integration
-2. Security validations
-3. Performance optimization
-4. Migration tools and documentation
+#### Parallel Processing
+- Launch multiple agents simultaneously for independent tasks
+- docs-fetcher can research while architect designs
+- workforce can implement components in parallel
+
+#### Context Efficiency
+- Each subagent has focused, minimal context
+- No complex hooks or monitoring overhead
+- Fast startup and execution
+
+#### Result Caching
+- Subagent outputs are saved as files for reuse
+- Future tasks can reference previous work
+- Build knowledge base over time
+
+### Usage Examples
+
+#### Simple API Integration
+```bash
+# Quick research and implementation
+/agents exec docs-fetcher "Find Stripe payment integration example"
+/agents exec workforce "Implement Stripe payments using docs-fetcher findings"
+```
+
+#### Complex System Design
+```bash
+# Full design-to-implementation cycle
+/agents exec architect "Design microservices architecture for user management"
+/agents exec docs-fetcher "Research microservices patterns and Docker deployment"
+/agents exec workforce "Implement user service based on architect design"
+/agents exec workforce "Create deployment configuration using docs-fetcher research"
+/agents exec architect "Review complete system for production readiness"
+```
+
+### Success Metrics
+
+- **Speed**: 3x faster development through parallel processing
+- **Quality**: Architect review ensures high code quality
+- **Research**: docs-fetcher provides current best practices
+- **Reliability**: workforce generates tested, working code
+
+### Getting Started
+
+1. **Validate Setup**: Ensure all three subagents are available in `.claude/agents/`
+2. **Start Simple**: Begin with single agent tasks to understand capabilities
+3. **Build Pipelines**: Create longer workflows with multiple agents
+4. **Iterate and Improve**: Refine agent cooperation patterns over time
 
 ## Claude Code Integration
 
