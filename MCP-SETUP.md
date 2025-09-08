@@ -11,7 +11,7 @@
 - **Purpose**: Advanced web scraping and search
 - **Tools**: `mcp__brightdata__web_search`, `mcp__brightdata__scrape_url` 
 - **Usage**: High-quality web data extraction
-- **Note**: Using placeholder API token - replace with real key
+- **Configuration**: API token loaded from `.env` file
 
 ## CLI Tools
 
@@ -35,11 +35,17 @@ The docs-fetcher subagent is configured to use:
 - Repomix CLI for codebase analysis
 - Standard WebSearch/WebFetch as fallback
 
+## Environment Setup
+
+- **`.env`**: Contains `BRIGHTDATA_API_TOKEN` (excluded from git)
+- **`.gitignore`**: Prevents accidental commit of sensitive data
+- **Environment variable expansion**: MCP config uses `${BRIGHTDATA_API_TOKEN}`
+
 ## Next Steps
 
-1. Replace Bright Data placeholder API token with real key
-2. Test MCP connections with `/mcp` command
-3. Verify docs-fetcher can access all tools
+1. Test MCP connections with `/mcp` command  
+2. Verify docs-fetcher can access all tools
+3. Confirm Bright Data authentication works
 
 ## Usage Example
 

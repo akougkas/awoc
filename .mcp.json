@@ -8,7 +8,7 @@
       "command": "npx", 
       "args": ["-y", "@brightdata/mcp"],
       "env": {
-        "API_TOKEN": "placeholder-api-token-replace-with-real-key",
+        "API_TOKEN": "${BRIGHTDATA_API_TOKEN}",
         "RATE_LIMIT": "50/30m",
         "PRO_MODE": "false"
       }
