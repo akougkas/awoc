@@ -44,6 +44,6 @@
     ]
   },
   "commands": {
-    "enabled": ["session-start", "session-end"]
+    "enabled": ["session-start", "session-end", "dev-start", "dev-end"]
   }
 }
