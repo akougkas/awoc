@@ -5,12 +5,10 @@
       "args": ["-y", "@upstash/context7-mcp"]
     },
     "brightdata": {
-      "command": "npx", 
+      "command": "npx",
       "args": ["-y", "@brightdata/mcp"],
       "env": {
-        "API_TOKEN": "${BRIGHTDATA_API_TOKEN}",
-        "RATE_LIMIT": "50/30m",
-        "PRO_MODE": "false"
+        "API_TOKEN": "de6c254df3c4fee86e73660ab897cd2df96a80bbc66bc8ff5b8b91336e4c2038"
       }
     }
   }
