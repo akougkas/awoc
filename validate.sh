@@ -20,32 +20,52 @@ WARNINGS=0
 # Logging
 LOG_FILE="${HOME}/.awoc-validation.log"
 
-# Helper functions
+# Input sanitization function
+sanitize_input() {
+    local input="$1"
+    # Remove dangerous shell characters and normalize
+    input="${input//[\$\`\\;|&<>]/}"
+    # Limit length to prevent buffer overflow
+    if [ ${#input} -gt 512 ]; then
+        input="${input:0:512}"
+    fi
+    echo "$input"
+}
+
+# Helper functions with improved error handling
 log() {
-    echo "$(date): $1" >> "$LOG_FILE"
+    local msg="${1//[\$\`\\]/}"  # Remove dangerous shell characters
+    if ! printf '%s: %s\n' "$(date)" "$msg" >> "$LOG_FILE" 2>/dev/null; then
+        # Fallback if log file is not writable
+        printf '%s: %s\n' "$(date)" "Warning: Cannot write to log file" >&2
+    fi
 }
 
 error() {
-    echo -e "${RED}❌ $1${NC}" >&2
-    log "ERROR: $1"
+    local msg="${1//[\$\`\\]/}"  # Remove dangerous shell characters
+    echo -e "${RED}❌ $msg${NC}" >&2
+    log "ERROR: $msg"
     ((VALIDATION_FAILED++))
 }
 
 warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}" >&2
-    log "WARNING: $1"
+    local msg="${1//[\$\`\\]/}"  # Remove dangerous shell characters
+    echo -e "${YELLOW}⚠️  $msg${NC}" >&2
+    log "WARNING: $msg"
     ((WARNINGS++))
 }
 
 success() {
-    echo -e "${GREEN}✅ $1${NC}"
-    log "SUCCESS: $1"
+    local msg="${1//[\$\`\\]/}"  # Remove dangerous shell characters
+    echo -e "${GREEN}✅ $msg${NC}"
+    log "SUCCESS: $msg"
     ((VALIDATION_PASSED++))
 }
 
 info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
-    log "INFO: $1"
+    local msg="${1//[\$\`\\]/}"  # Remove dangerous shell characters
+    echo -e "${BLUE}ℹ️  $msg${NC}"
+    log "INFO: $msg"
 }
 
 # Validate file exists and is readable
@@ -86,18 +106,46 @@ validate_directory() {
     return 0
 }
 
-# Validate JSON file
+# Validate JSON file with recovery
 validate_json() {
     local file="$1"
 
-    if ! command -v jq &> /dev/null; then
-        warning "jq not found - skipping detailed JSON validation for $file"
-        return 0
+    # Check if file exists first
+    if ! validate_file "$file"; then
+        return 1
     fi
 
-    if ! jq . "$file" > /dev/null 2>&1; then
-        error "$file contains invalid JSON"
-        return 1
+    # Try to validate JSON with jq if available
+    if command -v jq &> /dev/null; then
+        if ! jq . "$file" > /dev/null 2>&1; then
+            error "$file contains invalid JSON"
+            # Attempt basic recovery by showing JSON syntax issues
+            local json_errors
+            if json_errors="$(jq . "$file" 2>&1)"; then
+                info "JSON validation passed on second attempt"
+            else
+                warning "JSON syntax issues: ${json_errors}"
+            fi
+            return 1
+        fi
+    else
+        # Fallback validation without jq
+        if command -v python3 >/dev/null 2>&1; then
+            if ! python3 -m json.tool "$file" >/dev/null 2>&1; then
+                error "$file contains invalid JSON (Python3 validation failed)"
+                return 1
+            fi
+            info "$file JSON validated with Python3 fallback"
+        elif command -v python >/dev/null 2>&1; then
+            if ! python -m json.tool "$file" >/dev/null 2>&1; then
+                error "$file contains invalid JSON (Python validation failed)"
+                return 1
+            fi
+            info "$file JSON validated with Python fallback"
+        else
+            warning "No JSON validator available - skipping detailed validation for $file"
+            return 0
+        fi
     fi
 
     success "$file contains valid JSON"
@@ -371,5 +419,31 @@ main() {
     log "AWOC Validation completed - Passed: $VALIDATION_PASSED, Failed: $VALIDATION_FAILED, Warnings: $WARNINGS"
 }
 
-# Run validation
-main "$@"
+# Error recovery function
+cleanup_on_error() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        error "Validation interrupted with exit code $exit_code"
+        echo ""
+        echo -e "${YELLOW}Validation was interrupted. Partial results:${NC}"
+        echo "✅ Passed: $VALIDATION_PASSED"
+        echo "❌ Failed: $VALIDATION_FAILED"
+        echo "⚠️  Warnings: $WARNINGS"
+        echo ""
+        echo "Log file: $LOG_FILE"
+        echo ""
+        echo "To retry: $0 $*"
+    fi
+}
+
+# Set up error trapping
+trap cleanup_on_error EXIT ERR
+
+# Run validation with proper error handling
+if ! main "$@"; then
+    error "Main validation function failed"
+    exit 1
+fi
+
+# Clear trap on successful completion
+trap - EXIT ERR

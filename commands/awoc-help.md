@@ -1,113 +1,180 @@
 ---
 name: awoc-help
-description: Show AWOC 2.0 command reference and usage guide
+description: Show AWOC command reference and quick help
 allowed-tools: Bash, Read
 ---
 
-# AWOC 2.0 Command Reference
+# AWOC Help - Quick Reference
 
-## Session Management
-### `/session-start [task-description]`
-Initialize development session with clean state
-- ✅ Validates git status  
-- 📋 Loads project context
-- 🤖 Shows available subagents
+## 🚀 Quick Start Examples
 
-### `/session-end [what-was-accomplished]` 
-Clean up and commit session work
-- 📝 Updates documentation
-- 💾 Commits changes with proper format
-- ✅ Verifies clean state
-
-## Context Priming
-### `/prime-dev [scenario] [budget]`
-Load development context dynamically
-- **Scenarios**: bug-fixing, feature-dev, research, api-integration
-- **Default budget**: 3000 tokens
-- **Example**: `/prime-dev bug-fixing 2500`
-
-### `/list-priming`
-Show all available priming scenarios with usage examples
-
-## Handoff Protocol
-### `/handoff-save [type] [compression] [priority]`
-Create context handoff bundle for session continuity
-- **Types**: manual (default), automatic, emergency, scheduled
-- **Compression**: gzip (default), none
-- **Priority**: low, medium (default), high, critical
-
-### `/handoff-load [bundle-id] [mode] [validation]`
-Restore session context from handoff bundle  
-- **Bundle ID**: Specific ID or 'latest' for most recent
-- **Modes**: full (default), session-only, context-only, agents-only
-- **Validation**: strict (default), basic, none
-
-## Emergency Recovery
-### `/recover [recovery-type] [optimization-level]`
-Emergency context overflow recovery and optimization
-- **Types**: cascade (default), optimize, restart, emergency
-- **Levels**: conservative, balanced (default), aggressive
-
-## Current Status
-### System Status
-Context monitoring: !`if [ -f "$HOME/.awoc/context/current_session.json" ]; then echo "✅ Active"; else echo "❌ Not initialized"; fi`
-
-Session tokens: !`if [ -f "$HOME/.awoc/context/current_session.json" ]; then jq -r '.current_tokens // "Unknown"' "$HOME/.awoc/context/current_session.json"; else echo "Not monitored"; fi`
-
-### Available Subagents
-- `/agents architect` - Design & complex analysis (Opus, 16k thinking)
-- `/agents docs-fetcher` - Research & examples (Haiku+MCP)  
-- `/agents workforce` - Code generation (Sonnet)
-
-## Quick Start
+### Basic Agent Usage
 ```bash
-# 1. Start development session
-/session-start "Implement user authentication"
+# Research and documentation
+"Use api-researcher to explain OAuth2 flow"
+"Use content-writer to create a user guide"
 
-# 2. Load appropriate context
-/prime-dev api-integration 3000
+# Data analysis
+"Use data-analyst to analyze metrics.csv"
+"Use data-analyst to find patterns in logs"
 
-# 3. Use specialized agents
-/agents architect "Design JWT authentication system"
-
-# 4. End session and commit
-/session-end "Added JWT authentication system with tests"
+# Project planning
+"Use project-manager to break down this feature"
+"Use learning-assistant to explain Docker"
 ```
 
-## Advanced Workflows
+## 📋 Available Agents
+
+| Agent | Purpose | Example Usage |
+|-------|---------|---------------|
+| **api-researcher** | API docs & technical research | "Find Stripe payment examples" |
+| **content-writer** | Documentation & guides | "Write README for this project" |
+| **data-analyst** | Analyze CSV/JSON data | "Analyze error rates in logs" |
+| **project-manager** | Task planning | "Create sprint tasks" |
+| **learning-assistant** | Teaching & tutorials | "Explain React hooks" |
+| **creative-assistant** | Brainstorming | "Suggest UI improvements" |
+
+## 🛠️ Core Commands
+
+### Session Management (Optional)
+- `/session-start [description]` - Start tracking work
+- `/session-end [summary]` - Save and commit work
+
+### Help & Status
+- `/awoc-help` - Show this help (you're here!)
+- `./validate.sh` - Check system health (run from ~/.awoc)
+
+### Recovery (If Needed)
+- `/recover` - Fix context overflow issues
+- `/handoff-save` - Save session for later
+- `/handoff-load latest` - Resume previous work
+
+## 💡 Common Workflows
+
+### Starting a New Feature
 ```bash
-# Emergency recovery from context overflow
-/recover cascade balanced
+# 1. Get research
+"Use api-researcher to find best practices for user authentication"
 
-# Load previous work session  
-/handoff-load latest full strict
+# 2. Plan the work
+"Use project-manager to create tasks for JWT authentication"
 
-# Research-focused session
-/prime-dev research 4000
-/agents docs-fetcher "Find React testing best practices"
+# 3. Document it
+"Use content-writer to update the README with auth details"
 ```
 
-## Troubleshooting
+### Analyzing Project Data
+```bash
+# For CSV files
+"Use data-analyst to summarize data/sales.csv"
+"Use data-analyst to find trends in metrics.csv"
 
-### Common Issues
-**"Script not found" errors:**
-- 💡 Ensure you're in the AWOC project directory
-- 📖 Run commands from `/path/to/awoc-claude-v2/`
+# For logs
+"Use data-analyst to analyze error patterns in app.log"
+"Use data-analyst to create usage report from access.log"
+```
 
-**Context monitoring not working:**
-- 🔧 Run `./scripts/context-monitor.sh init` to initialize
-- 📊 Check `~/.awoc/context/` directory exists
+### Learning Something New
+```bash
+"Use learning-assistant to explain microservices architecture"
+"Use learning-assistant to create a study plan for Kubernetes"
+"Use creative-assistant to suggest project ideas for learning Go"
+```
 
-**Handoff bundles not loading:**
-- 🔍 Run `./scripts/handoff-manager.sh list` to see available bundles
-- 🛠️ Try `/recover` if bundles are corrupted
+## ❓ What to Do If...
 
-### Getting Help
-- 📖 Read project documentation: `CLAUDE.md`, `OPUS-PLAN.md`
-- 🔧 Run validation: `./validate.sh`
-- 🧪 Test components: `./test-phase4-smart-context.sh`
+### "Agent not found" error
+```bash
+# Use exact agent names:
+✅ "Use api-researcher to..."
+❌ "Use API agent to..."
+
+# Check agents are installed:
+ls ~/.claude/agents/  # Should show .md files
+```
+
+### Commands not working
+```bash
+# Slash commands (like /awoc-help) work in AI CLI
+# Script commands need to run from AWOC directory:
+cd ~/.awoc
+./validate.sh  # This should work now
+```
+
+### Token/context limits hit
+```bash
+# Use the recover command:
+/recover
+
+# Or start fresh:
+/session-end "Saving work"
+/session-start "Continuing"
+```
+
+### Git errors with sessions
+```bash
+# Option 1: Don't use session commands (they're optional!)
+# Just use agents directly without /session-start
+
+# Option 2: Clean git state first:
+git stash  # or git commit
+/session-start "Now it works"
+```
+
+## 📊 System Status Check
+
+Run validation to see what's working:
+```bash
+cd ~/.awoc && ./validate.sh
+```
+
+Expected output:
+```
+✅ Core files found
+✅ All agents installed
+✅ Commands available
+✅ Scripts executable
+```
+
+## 🎯 Tips for Success
+
+### DO:
+- ✅ Use agent exact names (api-researcher, not "API agent")
+- ✅ Be specific about what you want
+- ✅ Run validate.sh if something seems wrong
+- ✅ Check QUICKSTART.md for more examples
+
+### DON'T:
+- ❌ Overcomplicate - start with basic agent usage
+- ❌ Skip validation when things break
+- ❌ Use agents outside their specialty
+
+## 📚 More Resources
+
+- **Quick examples**: See `QUICKSTART.md` in the AWOC directory
+- **Full docs**: Check `README.md` for complete details
+- **Troubleshooting**: Run `./validate.sh` for system check
+
+## 🔧 Advanced Features (Optional)
+
+### Context Priming (Experimental)
+Load specialized context for specific tasks:
+- `/prime-dev bug-fixing` - Load debugging context
+- `/prime-dev feature-dev` - Load development context
+- `/prime-dev research` - Load research context
+
+### Delegation (Experimental)
+Create sub-agents for parallel work:
+- `/delegate [task]` - Delegate to sub-agent
+- `/create-subagent [type]` - Create custom sub-agent
+
+**Note**: These are experimental. Stick to basic agents for reliable results.
 
 ---
 
-**AWOC 2.0 Context Engineering Framework**  
-*Intelligent orchestration through dynamic context management*
+**Need more help?**
+- Check `QUICKSTART.md` for interactive examples
+- Run `./validate.sh` to diagnose issues
+- Use basic agents - they're simple and they work!
+
+*AWOC: Making AI assistants more capable, one agent at a time.*

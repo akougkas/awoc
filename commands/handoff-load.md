@@ -32,8 +32,11 @@ echo ""
 
 ## Initialize Context Monitoring
 ```bash
+# Detect AWOC installation directory
+AWOC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # Start context monitoring for handoff operation
-if ! "$PROJECT_ROOT/scripts/context-monitor.sh" log handoff-load start "$BUNDLE_ID" "$LOAD_MODE"; then
+if ! "$AWOC_DIR/scripts/context-monitor.sh" log handoff-load start "$BUNDLE_ID" "$LOAD_MODE"; then
     echo "⚠️  Context monitoring unavailable - proceeding without telemetry"
 fi
 ```
@@ -43,7 +46,7 @@ fi
 # Check if bundle exists and is accessible
 if [ "$BUNDLE_ID" = "latest" ]; then
     echo "📋 Finding latest handoff bundle..."
-    if ! LATEST_BUNDLE=$("$PROJECT_ROOT/scripts/handoff-manager.sh" list latest 2>/dev/null); then
+    if ! LATEST_BUNDLE=$("$AWOC_DIR/scripts/handoff-manager.sh" list latest 2>/dev/null); then
         echo "❌ No handoff bundles found"
         echo "   Use '/handoff-save' to create a bundle first"
         exit 1
@@ -52,11 +55,15 @@ if [ "$BUNDLE_ID" = "latest" ]; then
     echo "   Latest bundle: $BUNDLE_ID"
 fi
 
-# Verify bundle exists and is readable
-if ! "$PROJECT_ROOT/scripts/handoff-manager.sh" validate "$BUNDLE_ID"; then
+# Verify bundle exists and validate with comprehensive checks
+echo "🔍 Validating bundle structure and integrity..."
+if ! "$AWOC_DIR/scripts/bundle-validator.sh" check "$BUNDLE_ID" full; then
     echo "❌ Bundle validation failed: $BUNDLE_ID"
-    echo "   Try '/handoff-load $BUNDLE_ID session-only' for minimal loading"
-    echo "   Or check bundle status with: scripts/handoff-manager.sh info $BUNDLE_ID"
+    echo ""
+    echo "🔧 Recovery Options:"
+    echo "   1. Try quick validation: /handoff-load $BUNDLE_ID session-only"
+    echo "   2. Repair bundle: scripts/bundle-validator.sh repair ~/.awoc/handoffs/${BUNDLE_ID}.json"
+    echo "   3. Check bundle info: scripts/bundle-validator.sh info ~/.awoc/handoffs/${BUNDLE_ID}.json"
     exit 1
 fi
 
@@ -71,7 +78,7 @@ echo "   Bundle ID: $BUNDLE_ID"
 echo "   Load mode: $LOAD_MODE"
 
 # Execute the handoff load via handoff-manager
-if LOAD_RESULT=$("$PROJECT_ROOT/scripts/handoff-manager.sh" load "$BUNDLE_ID" "$LOAD_MODE"); then
+if LOAD_RESULT=$("$AWOC_DIR/scripts/handoff-manager.sh" load "$BUNDLE_ID" "$LOAD_MODE"); then
     echo "✅ Context restored successfully!"
     
     # Parse load result for display
@@ -82,7 +89,7 @@ if LOAD_RESULT=$("$PROJECT_ROOT/scripts/handoff-manager.sh" load "$BUNDLE_ID" "$
     done
     
     # Log successful completion
-    "$PROJECT_ROOT/scripts/context-monitor.sh" log handoff-load complete "$BUNDLE_ID" "$LOAD_MODE" 2>/dev/null || true
+    "$AWOC_DIR/scripts/context-monitor.sh" log handoff-load complete "$BUNDLE_ID" "$LOAD_MODE" 2>/dev/null || true
     
 else
     echo "❌ Failed to restore context from bundle"

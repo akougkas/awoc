@@ -143,8 +143,11 @@ Scheduled optimization for system health:
 The command integrates with the complete AWOC 2.0 optimization framework:
 
 ```bash
+# Detect AWOC installation directory
+AWOC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # Get current context state
-current_context=$(scripts/context-monitor.sh status --json)
+current_context=$("$AWOC_DIR/scripts/context-monitor.sh" status --json)
 current_tokens=$(echo "$current_context" | jq -r '.total_tokens')
 
 # Determine optimization mode
@@ -154,26 +157,26 @@ optimization_target="${2:-auto}"
 case "$optimization_mode" in
     "predictive")
         # ML-driven predictive optimization
-        scripts/context-optimizer.sh predictive "$current_tokens" "$current_context" "$optimization_target"
+        "$AWOC_DIR/scripts/context-optimizer.sh" predictive "$current_tokens" "$current_context" "$optimization_target"
         ;;
     "reactive")
         threshold="${3:-80}"
         urgency="${4:-medium}"
-        scripts/context-optimizer.sh reactive "$current_tokens" "$threshold" "$urgency"
+        "$AWOC_DIR/scripts/context-optimizer.sh" reactive "$current_tokens" "$threshold" "$urgency"
         ;;
     "emergency")
         time_limit="${3:-5}"
-        scripts/context-optimizer.sh emergency "$current_tokens" "$time_limit"
+        "$AWOC_DIR/scripts/context-optimizer.sh" emergency "$current_tokens" "$time_limit"
         ;;
     "autonomous")
-        scripts/context-optimizer.sh autonomous "$current_context" "$optimization_target"
+        "$AWOC_DIR/scripts/context-optimizer.sh" autonomous "$current_context" "$optimization_target"
         ;;
     "maintenance")
-        scripts/context-optimizer.sh maintenance "$current_tokens"
+        "$AWOC_DIR/scripts/context-optimizer.sh" maintenance "$current_tokens"
         ;;
     *)
         # Show optimization recommendations
-        scripts/context-intelligence.sh predict optimization "$current_context"
+        "$AWOC_DIR/scripts/context-intelligence.sh" predict optimization "$current_context"
         ;;
 esac
 

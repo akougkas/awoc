@@ -10,6 +10,8 @@ import json
 import sys
 import os
 import argparse
+import signal
+import resource
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Any, Optional
 from dataclasses import dataclass
@@ -654,6 +656,22 @@ class PatternAnalyzer:
         
         return roadmap
 
+# Timeout handler for resource constraints
+def timeout_handler(signum, frame):
+    raise TimeoutError("Pattern analysis timed out")
+
+# Resource limiting function
+def set_resource_limits():
+    """Set resource limits for ML processing"""
+    try:
+        # Limit memory to 512MB
+        resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+        # Limit CPU time to 300 seconds
+        resource.setrlimit(resource.RLIMIT_CPU, (300, 300))
+        logger.info("Resource limits set: 512MB memory, 300s CPU time")
+    except (ValueError, OSError) as e:
+        logger.warning(f"Could not set resource limits: {e}")
+
 def main():
     parser = argparse.ArgumentParser(description='AWOC 2.0 Pattern Analyzer')
     parser.add_argument('action', choices=['analyze', 'report'], help='Action to perform')
@@ -665,17 +683,33 @@ def main():
                        help='Specific patterns to analyze')
     
     args = parser.parse_args()
-    
+
+    # Set resource constraints
+    set_resource_limits()
+
+    # Set timeout (default 300 seconds)
+    timeout = int(os.environ.get('AWOC_ML_TIMEOUT', '300'))
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(timeout)
+
     # Initialize analyzer
     analyzer = PatternAnalyzer(args.intelligence_dir)
     
     try:
-        # Load session data
+        logger.info(f"Starting pattern analysis with {timeout}s timeout")
+
+        # Load session data with size limits
         session_data = []
+        max_records = int(os.environ.get('AWOC_ML_MAX_RECORDS', '10000'))
         with open(args.session_file, 'r') as f:
+            record_count = 0
             for line in f:
-                if line.strip():
+                if line.strip() and record_count < max_records:
                     session_data.append(json.loads(line))
+                    record_count += 1
+                elif record_count >= max_records:
+                    logger.warning(f"Limiting to {max_records} records for resource management")
+                    break
         
         logger.info(f"Loaded {len(session_data)} session records")
         
@@ -710,10 +744,21 @@ def main():
             
             print(json.dumps(report, indent=2, default=str))
     
+    except TimeoutError:
+        logger.error("Pattern analysis timed out - consider reducing data size or increasing timeout")
+        print(json.dumps({'status': 'error', 'error': 'timeout'}), file=sys.stderr)
+        sys.exit(1)
+    except MemoryError:
+        logger.error("Pattern analysis ran out of memory - consider reducing data size")
+        print(json.dumps({'status': 'error', 'error': 'out_of_memory'}), file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         logger.error(f"Error in pattern analysis: {e}")
         print(json.dumps({'status': 'error', 'error': str(e)}), file=sys.stderr)
         sys.exit(1)
+    finally:
+        # Disable timeout
+        signal.alarm(0)
 
 if __name__ == '__main__':
     main()

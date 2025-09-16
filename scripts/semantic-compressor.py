@@ -12,6 +12,8 @@ import os
 import re
 import argparse
 import hashlib
+import signal
+import resource
 from datetime import datetime
 from typing import Dict, List, Tuple, Any, Optional
 from dataclasses import dataclass
@@ -501,6 +503,22 @@ class SemanticCompressor:
         
         return result
 
+# Timeout handler for resource constraints
+def timeout_handler(signum, frame):
+    raise TimeoutError("Semantic compression timed out")
+
+# Resource limiting function
+def set_resource_limits():
+    """Set resource limits for ML processing"""
+    try:
+        # Limit memory to 256MB for compression
+        resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
+        # Limit CPU time to 60 seconds for compression tasks
+        resource.setrlimit(resource.RLIMIT_CPU, (60, 60))
+        logger.info("Resource limits set: 256MB memory, 60s CPU time")
+    except (ValueError, OSError) as e:
+        logger.warning(f"Could not set resource limits: {e}")
+
 def main():
     parser = argparse.ArgumentParser(description='AWOC 2.0 Semantic Compressor')
     parser.add_argument('action', choices=['compress', 'analyze'], help='Action to perform')
@@ -512,11 +530,20 @@ def main():
     parser.add_argument('--aggressive-mode', action='store_true', help='Enable aggressive compression')
     
     args = parser.parse_args()
-    
+
+    # Set resource constraints
+    set_resource_limits()
+
+    # Set timeout based on max-time argument
+    timeout = min(args.max_time, int(os.environ.get('AWOC_ML_TIMEOUT', '60')))
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(timeout)
+
     # Initialize compressor
     compressor = SemanticCompressor(args.preservation_threshold)
     
     try:
+        logger.info(f"Starting semantic compression with {timeout}s timeout")
         # Get input content
         if args.input_file and os.path.exists(args.input_file):
             with open(args.input_file, 'r', encoding='utf-8') as f:
@@ -579,10 +606,21 @@ def main():
             
             print(json.dumps(output, indent=2))
     
+    except TimeoutError:
+        logger.error("Semantic compression timed out - content may be too large")
+        print(json.dumps({'status': 'error', 'error': 'timeout'}), file=sys.stderr)
+        sys.exit(1)
+    except MemoryError:
+        logger.error("Semantic compression ran out of memory - content may be too large")
+        print(json.dumps({'status': 'error', 'error': 'out_of_memory'}), file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         logger.error(f"Error in semantic compression: {e}")
         print(json.dumps({'status': 'error', 'error': str(e)}), file=sys.stderr)
         sys.exit(1)
+    finally:
+        # Disable timeout
+        signal.alarm(0)
 
 if __name__ == '__main__':
     main()

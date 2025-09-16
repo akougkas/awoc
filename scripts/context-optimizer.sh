@@ -13,6 +13,32 @@ INTELLIGENCE_DIR="${AWOC_DIR}/intelligence"
 OPTIMIZATION_DIR="${AWOC_DIR}/optimization"
 CACHE_DIR="${OPTIMIZATION_DIR}/cache"
 
+# Dynamic PROJECT_ROOT detection with validation
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -n "${PROJECT_ROOT:-}" ]; then
+    # Use provided PROJECT_ROOT if set
+    PROJECT_ROOT="$PROJECT_ROOT"
+elif [ -f "${SCRIPT_DIR}/../settings.json" ]; then
+    # Derive from script location (scripts/ directory)
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+    # Fallback: try to find settings.json upwards
+    current_dir="$SCRIPT_DIR"
+    while [ "$current_dir" != "/" ]; do
+        if [ -f "$current_dir/settings.json" ]; then
+            PROJECT_ROOT="$current_dir"
+            break
+        fi
+        current_dir="$(dirname "$current_dir")"
+    done
+
+    # Final fallback
+    if [ -z "${PROJECT_ROOT:-}" ]; then
+        echo "[ERROR] Cannot determine PROJECT_ROOT. Please set PROJECT_ROOT environment variable or ensure settings.json exists." >&2
+        exit 1
+    fi
+fi
+
 # Create optimization directories
 mkdir -p "${OPTIMIZATION_DIR}" "${CACHE_DIR}"
 

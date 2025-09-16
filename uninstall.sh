@@ -1,388 +1,247 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# AWOC Uninstall Script
-# Completely removes AWOC from the system
+# AWOC System Uninstaller
+# Removes AWOC from ~/.awoc and optionally from Claude Code directories
 
 set -euo pipefail
 
 # Configuration
-LOG_FILE="${HOME}/.awoc-uninstall.log"
-BACKUP_ON_UNINSTALL=true
+readonly AWOC_HOME="${AWOC_HOME:-$HOME/.awoc}"
+readonly AWOC_BIN="${AWOC_HOME}/bin"
+readonly AWOC_LIB="${AWOC_HOME}/lib"
+readonly AWOC_BACKUPS="${AWOC_HOME}/backups"
 
 # Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly BLUE='\033[0;34m'
+readonly YELLOW='\033[1;33m'
+readonly BOLD='\033[1m'
+readonly NC='\033[0m'
 
-# Helper functions
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): $1" >> "$LOG_FILE"
-}
+# Logging
+log_info() { echo -e "${BLUE}ℹ️${NC}  $*"; }
+log_success() { echo -e "${GREEN}✅${NC} $*"; }
+log_error() { echo -e "${RED}❌${NC} $*" >&2; }
+log_warning() { echo -e "${YELLOW}⚠️${NC}  $*" >&2; }
 
-error() {
-    echo -e "${RED}❌ Error: $1${NC}" >&2
-    log "ERROR: $1"
-    exit 1
-}
+# Check if AWOC is installed
+check_installation() {
+    if [[ ! -d "$AWOC_HOME" ]]; then
+        log_error "AWOC is not installed at $AWOC_HOME"
+        exit 1
+    fi
 
-warning() {
-    echo -e "${YELLOW}⚠️  Warning: $1${NC}" >&2
-    log "WARNING: $1"
-}
+    log_info "Found AWOC installation at: ${BOLD}$AWOC_HOME${NC}"
 
-success() {
-    echo -e "${GREEN}✅ $1${NC}"
-    log "SUCCESS: $1"
-}
-
-info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
-    log "INFO: $1"
-}
-
-# Detect installation location
-detect_installation() {
-    local install_locations=(
-        "$HOME/.claude"
-        "$HOME/.opencode"
-        "$HOME/.gemini"
-        "/usr/local/share/awoc"
-        "/opt/awoc"
-    )
-
-    for location in "${install_locations[@]}"; do
-        if [ -d "$location" ] && [ -f "$location/settings.json" ]; then
-            echo "$location"
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-# Create uninstall backup
-create_uninstall_backup() {
-    local install_dir="$1"
-    local backup_name="awoc-uninstall-backup-$(date '+%Y%m%d_%H%M%S')"
-    local backup_path="${HOME}/.awoc/uninstall-backups/$backup_name"
-
-    info "Creating uninstall backup..."
-
-    mkdir -p "$backup_path" 2>/dev/null || {
-        warning "Cannot create backup directory"
-        return 1
-    }
-
-    # Copy installation files
-    if cp -r "$install_dir"/* "$backup_path/" 2>/dev/null; then
-        success "Uninstall backup created: $backup_path"
-        echo "$backup_path"
-        return 0
-    else
-        warning "Failed to create uninstall backup"
-        return 1
+    # Show installation details
+    if [[ -f "$AWOC_HOME/VERSION" ]]; then
+        local version=$(jq -r '.version' "$AWOC_HOME/VERSION" 2>/dev/null)
+        local installed=$(jq -r '.installed' "$AWOC_HOME/VERSION" 2>/dev/null)
+        echo "  Version: $version"
+        echo "  Installed: $installed"
     fi
 }
 
-# Remove AWOC files
-remove_awoc_files() {
-    local install_dir="$1"
-    local removed_files=0
-    local total_files=0
+# Find AWOC installations in Claude Code directories
+find_awoc_installations() {
+    log_info "Searching for AWOC installations..."
 
-    info "Removing AWOC files from: $install_dir"
+    local installations=()
 
-    # List of files/directories to remove
-    local awoc_files=(
-        "settings.json"
-        "agents/"
-        "commands/"
-        "output-styles/"
-        "templates/"
-        "scripts/"
-        "docs/"
-        "awoc"
-        "install.sh"
-        "validate.sh"
-        "backup.sh"
-        "uninstall.sh"
-        ".awoc/"
-    )
+    # Search common locations and projects
+    while IFS= read -r awoc_file; do
+        local dir=$(dirname "$awoc_file")
+        installations+=("$dir")
+    done < <(find ~ -name ".awoc" -type f 2>/dev/null | head -20)
 
-    # Count total files first
-    for file in "${awoc_files[@]}"; do
-        if [ -e "$install_dir/$file" ]; then
-            if [ -d "$install_dir/$file" ]; then
-                total_files=$((total_files + $(find "$install_dir/$file" -type f 2>/dev/null | wc -l || echo 0)))
-            else
-                ((total_files++))
-            fi
-        fi
-    done
-
-    info "Found $total_files AWOC files to remove"
-
-    # Remove files
-    for file in "${awoc_files[@]}"; do
-        if [ -e "$install_dir/$file" ]; then
-            if rm -rf "$install_dir/$file" 2>/dev/null; then
-                if [ -d "$install_dir/$file" ]; then
-                    local file_count=$(find "$install_dir/$file" -type f 2>/dev/null | wc -l 2>/dev/null || echo 0)
-                    removed_files=$((removed_files + file_count))
-                    success "Removed directory: $file ($file_count files)"
-                else
-                    ((removed_files++))
-                    success "Removed file: $file"
-                fi
-            else
-                warning "Failed to remove: $install_dir/$file"
-            fi
-        fi
-    done
-
-    success "Removed $removed_files AWOC files"
-}
-
-# Clean up system-wide files
-cleanup_system_files() {
-    info "Cleaning up system-wide files..."
-
-    # Remove from PATH if installed globally
-    local global_install_paths=(
-        "/usr/local/bin/awoc"
-        "/usr/bin/awoc"
-        "/opt/bin/awoc"
-    )
-
-    for path in "${global_install_paths[@]}"; do
-        if [ -L "$path" ] || [ -f "$path" ]; then
-            if rm -f "$path" 2>/dev/null; then
-                success "Removed global symlink: $path"
-            fi
-        fi
-    done
-
-    # Remove desktop entries if they exist
-    local desktop_files=(
-        "$HOME/.local/share/applications/awoc.desktop"
-        "/usr/share/applications/awoc.desktop"
-    )
-
-    for desktop_file in "${desktop_files[@]}"; do
-        if [ -f "$desktop_file" ]; then
-            if rm -f "$desktop_file" 2>/dev/null; then
-                success "Removed desktop entry: $desktop_file"
-            fi
-        fi
-    done
-
-    # Remove man pages if they exist
-    local man_paths=(
-        "/usr/local/share/man/man1/awoc.1"
-        "/usr/share/man/man1/awoc.1"
-    )
-
-    for man_path in "${man_paths[@]}"; do
-        if [ -f "$man_path" ]; then
-            if rm -f "$man_path" 2>/dev/null; then
-                success "Removed man page: $man_path"
-            fi
-        fi
-    done
-}
-
-# Clean up user data
-cleanup_user_data() {
-    local keep_backups="${1:-true}"
-
-    info "Cleaning up user data..."
-
-    # Remove log files
-    local log_files=(
-        "$HOME/.awoc/backup.log"
-        "$HOME/.awoc-uninstall.log"
-        "$HOME/.awoc-install.log"
-        "$HOME/.awoc-validation.log"
-    )
-
-    for log_file in "${log_files[@]}"; do
-        if [ -f "$log_file" ]; then
-            rm -f "$log_file" 2>/dev/null && success "Removed log file: $log_file"
-        fi
-    done
-
-    # Handle backups directory
-    local backups_dir="$HOME/.awoc"
-    if [ -d "$backups_dir" ]; then
-        if [ "$keep_backups" = "true" ]; then
-            info "Keeping backups directory: $backups_dir"
-            echo "You can manually remove it later with: rm -rf $backups_dir"
-        else
-            if rm -rf "$backups_dir" 2>/dev/null; then
-                success "Removed backups directory: $backups_dir"
-            else
-                warning "Failed to remove backups directory"
-            fi
-        fi
-    fi
-
-    # Remove temporary files
-    local temp_files=(
-        "/tmp/awoc-*"
-        "$HOME/.cache/awoc"
-    )
-
-    for temp_file in "${temp_files[@]}"; do
-        if [ -e "$temp_file" ]; then
-            rm -rf "$temp_file" 2>/dev/null && success "Removed temporary files: $temp_file"
-        fi
-    done
-}
-
-# Verify uninstallation
-verify_uninstallation() {
-    local install_dir="$1"
-
-    info "Verifying uninstallation..."
-
-    # Check for remaining AWOC files
-    local remaining_files=()
-
-    if [ -d "$install_dir" ]; then
-        while IFS= read -r -d '' file; do
-            case "$file" in
-                *settings.json*|*agents/*|*commands/*|*output-styles/*|*awoc*)
-                    remaining_files+=("$file")
-                    ;;
-            esac
-        done < <(find "$install_dir" -type f -print0 2>/dev/null)
-    fi
-
-    if [ ${#remaining_files[@]} -gt 0 ]; then
-        warning "Found ${#remaining_files[@]} remaining AWOC files:"
-        printf '  %s\n' "${remaining_files[@]}"
-        return 1
-    else
-        success "No AWOC files found - uninstallation successful"
-        return 0
-    fi
-}
-
-# Show uninstallation summary
-show_summary() {
-    local install_dir="$1"
-    local backup_path="$2"
-
-    echo ""
-    echo -e "${BLUE}📋 Uninstallation Summary${NC}"
-    echo "=========================="
-    echo "Installation directory: $install_dir"
-    if [ -n "$backup_path" ]; then
-        echo "Uninstall backup: $backup_path"
-    fi
-    echo "Log file: $LOG_FILE"
-    echo ""
-    echo -e "${GREEN}✅ AWOC has been successfully uninstalled!${NC}"
-    echo ""
-    echo -e "${YELLOW}What was removed:${NC}"
-    echo "  • AWOC core files and directories"
-    echo "  • AWOC command wrapper"
-    echo "  • System-wide symlinks (if any)"
-    echo "  • Desktop entries (if any)"
-    echo "  • Log files"
-    echo ""
-    if [ -n "$backup_path" ]; then
-        echo -e "${YELLOW}To restore AWOC:${NC}"
-        echo "  cp -r $backup_path/* $install_dir/"
-        echo "  cd $install_dir && ./install.sh"
+    if [[ ${#installations[@]} -gt 0 ]]; then
         echo ""
-    fi
-    echo -e "${YELLOW}To reinstall AWOC:${NC}"
-    echo "  git clone <awoc-repo> $install_dir"
-    echo "  cd $install_dir && ./install.sh"
-}
+        echo "Found AWOC in the following locations:"
+        for dir in "${installations[@]}"; do
+            local version=$(jq -r '.version' "$dir/.awoc" 2>/dev/null)
+            echo "  • $dir (v$version)"
+        done
 
-# Interactive confirmation
-confirm_uninstall() {
-    echo ""
-    echo -e "${RED}⚠️  WARNING: This will completely remove AWOC from your system!${NC}"
-    echo ""
-    echo "This action will:"
-    echo "  • Remove all AWOC files and directories"
-    echo "  • Delete the AWOC command wrapper"
-    echo "  • Clean up system-wide installations"
-    echo "  • Remove log files and temporary data"
-    echo ""
-    echo -e "${YELLOW}Note: Backups will be preserved unless you choose to remove them.${NC}"
-    echo ""
-
-    read -p "Are you sure you want to uninstall AWOC? (y/N): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        info "Uninstallation cancelled by user"
-        exit 0
-    fi
-
-    if [ "$BACKUP_ON_UNINSTALL" = "true" ]; then
-        read -p "Create a backup before uninstalling? (Y/n): " -n 1 -r
         echo ""
-        if [[ $REPLY =~ ^[Nn]$ ]]; then
-            BACKUP_ON_UNINSTALL=false
+        read -p "Remove AWOC from all locations? (y/N): " -r
+        if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+            for dir in "${installations[@]}"; do
+                remove_awoc_from_directory "$dir"
+            done
         fi
+    else
+        log_info "No AWOC installations found in Claude Code directories"
     fi
 }
 
-# Main uninstall function
-main() {
-    echo -e "${BLUE}🗑️  AWOC Uninstaller${NC}"
-    echo "=================="
+# Remove AWOC from a specific directory
+remove_awoc_from_directory() {
+    local target_dir="$1"
 
-    # Initialize logging
-    touch "$LOG_FILE" 2>/dev/null || warning "Cannot create log file: $LOG_FILE"
-    log "AWOC Uninstallation started"
+    log_info "Removing AWOC from: $target_dir"
 
-    # Detect installation
-    local install_dir
-    if ! install_dir=$(detect_installation); then
-        error "AWOC installation not found. Nothing to uninstall."
-    fi
+    # Check for backup
+    local backup_path=$(jq -r '.backup // "none"' "$target_dir/.awoc" 2>/dev/null)
 
-    info "Found AWOC installation at: $install_dir"
-
-    # Confirm uninstallation
-    confirm_uninstall
-
-    # Create backup if requested
-    local backup_path=""
-    if [ "$BACKUP_ON_UNINSTALL" = "true" ]; then
-        if backup_path=$(create_uninstall_backup "$install_dir"); then
-            log "Uninstall backup created: $backup_path"
+    if [[ "$backup_path" != "none" ]] && [[ -d "$backup_path" ]]; then
+        read -p "Restore original configuration from backup? (Y/n): " -r
+        if [[ ! "$REPLY" =~ ^[Nn]$ ]]; then
+            # Restore from backup
+            rm -rf "$target_dir"/* 2>/dev/null || true
+            cp -r "$backup_path"/* "$target_dir/" 2>/dev/null || true
+            rm -f "$target_dir/.backup_info"
+            log_success "Original configuration restored"
         fi
     fi
 
     # Remove AWOC files
-    remove_awoc_files "$install_dir"
+    local awoc_files=(
+        ".awoc"
+        "settings.awoc.json"
+        "agents/api-researcher.md"
+        "agents/content-writer.md"
+        "agents/creative-assistant.md"
+        "agents/data-analyst.md"
+        "agents/learning-assistant.md"
+        "agents/project-manager.md"
+        "commands/awoc-help.md"
+        "commands/session-start.md"
+        "commands/session-end.md"
+        "output-styles/development.md"
+    )
 
-    # Clean up system files
-    cleanup_system_files
+    for file in "${awoc_files[@]}"; do
+        rm -f "$target_dir/$file" 2>/dev/null || true
+    done
 
-    # Clean up user data (keep backups by default)
-    cleanup_user_data true
+    # Remove AWOC scripts directory
+    rm -rf "$target_dir/scripts" 2>/dev/null || true
 
-    # Verify uninstallation
-    if verify_uninstallation "$install_dir"; then
-        success "Uninstallation completed successfully"
-    else
-        warning "Some AWOC files may still remain"
-    fi
-
-    # Show summary
-    show_summary "$install_dir" "$backup_path"
-
-    log "AWOC Uninstallation completed"
+    log_success "AWOC removed from $target_dir"
 }
 
-# Run main function
+# Remove from shell configuration
+remove_from_shell() {
+    log_info "Removing AWOC from shell configuration..."
+
+    local shell_configs=(
+        "$HOME/.bashrc"
+        "$HOME/.zshrc"
+        "$HOME/.config/fish/config.fish"
+    )
+
+    for config in "${shell_configs[@]}"; do
+        if [[ -f "$config" ]]; then
+            # Remove AWOC PATH entries
+            if grep -q "/.awoc/bin" "$config"; then
+                # Create backup
+                cp "$config" "$config.awoc-backup"
+
+                # Remove AWOC lines
+                sed -i '/# AWOC - Agentic Workflows Orchestration Cabinet/d' "$config"
+                sed -i '/\.awoc\/bin/d' "$config"
+
+                log_success "Removed from $config (backup: $config.awoc-backup)"
+            fi
+        fi
+    done
+}
+
+# Show backups before deletion
+show_backups() {
+    if [[ -d "$AWOC_BACKUPS" ]]; then
+        local backup_count=$(find "$AWOC_BACKUPS" -name ".backup_info" -type f 2>/dev/null | wc -l)
+
+        if [[ $backup_count -gt 0 ]]; then
+            echo ""
+            log_warning "Found $backup_count backup(s) that will be deleted:"
+
+            find "$AWOC_BACKUPS" -name ".backup_info" -type f | while read -r info_file; do
+                local backup_dir=$(dirname "$info_file")
+                local original=$(jq -r '.original_path' "$info_file" 2>/dev/null)
+                local date=$(jq -r '.backup_date' "$info_file" 2>/dev/null)
+                echo "  • $(basename "$backup_dir") - $original ($date)"
+            done
+
+            echo ""
+            read -p "Delete all backups? (y/N): " -r
+            if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
+                log_info "Preserving backups at: $AWOC_BACKUPS"
+                return 1
+            fi
+        fi
+    fi
+    return 0
+}
+
+# Main uninstallation
+main() {
+    cat << EOF
+
+╔══════════════════════════════════════════════════╗
+║                                                  ║
+║       🗑️  AWOC Uninstaller                      ║
+║     Agentic Workflows Orchestration Cabinet     ║
+║                                                  ║
+╚══════════════════════════════════════════════════╝
+
+${BOLD}This will remove AWOC from your system${NC}
+
+EOF
+
+    # Check installation
+    check_installation
+
+    # Find and optionally remove from Claude Code directories
+    find_awoc_installations
+
+    echo ""
+    log_warning "This will completely remove AWOC from: ${BOLD}$AWOC_HOME${NC}"
+
+    # Show backups
+    local preserve_backups=false
+    if ! show_backups; then
+        preserve_backups=true
+    fi
+
+    read -p "Proceed with complete uninstallation? (yes/N): " -r
+    echo
+
+    if [[ ! "$REPLY" =~ ^[Yy][Ee][Ss]$ ]]; then
+        log_info "Uninstallation cancelled"
+        exit 0
+    fi
+
+    # Remove from shell configuration
+    remove_from_shell
+
+    # Remove AWOC home directory
+    if [[ "$preserve_backups" == true ]]; then
+        # Preserve backups, remove everything else
+        find "$AWOC_HOME" -mindepth 1 -maxdepth 1 ! -name "backups" -exec rm -rf {} \;
+        log_info "AWOC removed (backups preserved at $AWOC_BACKUPS)"
+    else
+        # Remove everything
+        rm -rf "$AWOC_HOME"
+        log_success "AWOC completely removed"
+    fi
+
+    cat << EOF
+
+${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+${GREEN}✅ AWOC uninstalled successfully${NC}
+${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+
+Thank you for using AWOC!
+
+To reinstall:
+  ${BLUE}curl -fsSL https://github.com/akougkas/awoc/raw/main/install.sh | bash${NC}
+
+Note: You may need to restart your shell or remove AWOC from PATH manually.
+
+EOF
+}
+
+# Run uninstaller
 main "$@"

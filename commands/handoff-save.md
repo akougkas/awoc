@@ -53,8 +53,11 @@ esac
 
 ## Initialize Context Monitoring
 ```bash
+# Detect AWOC installation directory
+AWOC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # Start context monitoring for handoff operation
-if ! "$PROJECT_ROOT/scripts/context-monitor.sh" log handoff-save start "$SAVE_TYPE" "$COMPRESSION"; then
+if ! "$AWOC_DIR/scripts/context-monitor.sh" log handoff-save start "$SAVE_TYPE" "$COMPRESSION"; then
     echo "⚠️  Context monitoring unavailable - proceeding without telemetry"
 fi
 ```
@@ -68,24 +71,33 @@ echo "   Compression: $COMPRESSION"
 echo "   Priority: $PRIORITY"
 echo ""
 
-if BUNDLE_ID=$("$PROJECT_ROOT/scripts/handoff-manager.sh" save "$SAVE_TYPE" "$COMPRESSION" "$PRIORITY"); then
+if BUNDLE_ID=$("$AWOC_DIR/scripts/handoff-manager.sh" save "$SAVE_TYPE" "$COMPRESSION" "$PRIORITY"); then
     echo "✅ Handoff bundle created successfully!"
     echo "   Bundle ID: $BUNDLE_ID"
     echo "   Location: ~/.awoc/handoffs/"
     
     # Log completion
-    "$PROJECT_ROOT/scripts/context-monitor.sh" log handoff-save complete "$BUNDLE_ID" "$SAVE_TYPE" 2>/dev/null || true
+    "$AWOC_DIR/scripts/context-monitor.sh" log handoff-save complete "$BUNDLE_ID" "$SAVE_TYPE" 2>/dev/null || true
     
+    # Validate bundle integrity
+    echo ""
+    echo "🔍 Validating bundle integrity..."
+    if "$AWOC_DIR/scripts/bundle-validator.sh" check "$BUNDLE_ID" quick >/dev/null 2>&1; then
+        echo "✅ Bundle validation passed"
+    else
+        echo "⚠️  Bundle validation warnings (check logs for details)"
+    fi
+
     # Show bundle info
     echo ""
     echo "📊 Bundle Information:"
-    "$PROJECT_ROOT/scripts/handoff-manager.sh" info "$BUNDLE_ID" || echo "   Info temporarily unavailable"
+    "$AWOC_DIR/scripts/handoff-manager.sh" info "$BUNDLE_ID" || echo "   Info temporarily unavailable"
 else
     echo "❌ Failed to create handoff bundle"
     echo "   Check ~/.awoc/logs/ for details"
     
     # Log failure
-    "$PROJECT_ROOT/scripts/context-monitor.sh" log handoff-save error "$SAVE_TYPE" "$COMPRESSION" 2>/dev/null || true
+    "$AWOC_DIR/scripts/context-monitor.sh" log handoff-save error "$SAVE_TYPE" "$COMPRESSION" 2>/dev/null || true
     exit 1
 fi
 ```

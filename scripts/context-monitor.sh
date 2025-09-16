@@ -26,6 +26,18 @@ init_logging_safe() {
     return 0
 }
 
+# Input sanitization function
+sanitize_input() {
+    local input="$1"
+    # Remove dangerous shell characters and normalize
+    input="${input//[\$\`\\;|&<>]/}"
+    # Limit length to prevent buffer overflow
+    if [ ${#input} -gt 256 ]; then
+        input="${input:0:256}"
+    fi
+    echo "$input"
+}
+
 # Initialize logging safely
 init_logging_safe
 
@@ -34,7 +46,30 @@ CONTEXT_DIR="${HOME}/.awoc/context"
 CONFIG_FILE="$CONTEXT_DIR/monitor.json"
 STATS_FILE="$CONTEXT_DIR/stats.json"
 SESSION_FILE="$CONTEXT_DIR/current_session.json"
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Dynamic PROJECT_ROOT detection with validation
+if [ -n "${PROJECT_ROOT:-}" ]; then
+    # Use provided PROJECT_ROOT if set
+    PROJECT_ROOT="$PROJECT_ROOT"
+elif [ -f "${SCRIPT_DIR}/../settings.json" ]; then
+    # Derive from script location (scripts/ directory)
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+    # Fallback: try to find settings.json upwards
+    current_dir="$SCRIPT_DIR"
+    while [ "$current_dir" != "/" ]; do
+        if [ -f "$current_dir/settings.json" ]; then
+            PROJECT_ROOT="$current_dir"
+            break
+        fi
+        current_dir="$(dirname "$current_dir")"
+    done
+
+    # Final fallback
+    if [ -z "${PROJECT_ROOT:-}" ]; then
+        log_error "Cannot determine PROJECT_ROOT. Please set PROJECT_ROOT environment variable or ensure settings.json exists."
+        exit 1
+    fi
+fi
 
 # Default thresholds (percentages)
 DEFAULT_WARNING_THRESHOLD=70
