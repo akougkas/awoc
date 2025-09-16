@@ -1,0 +1,345 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AWOC Context Handoff Bundle",
+  "description": "Complete context state bundle for session continuity and recovery",
+  "type": "object",
+  "required": [
+    "bundle_metadata",
+    "session_state", 
+    "context_usage",
+    "knowledge_graph",
+    "agent_coordination"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "bundle_metadata": {
+      "type": "object",
+      "required": ["bundle_id", "created_at", "bundle_type", "version", "compression"],
+      "properties": {
+        "bundle_id": {
+          "type": "string",
+          "pattern": "^[0-9]{8}_[0-9]{6}_[a-f0-9]{8}$",
+          "description": "Format: YYYYMMDD_HHMMSS_sessionid"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of bundle creation"
+        },
+        "bundle_type": {
+          "type": "string",
+          "enum": ["manual", "automatic", "emergency", "scheduled"],
+          "description": "Type of handoff trigger"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Semantic version of bundle format"
+        },
+        "compression": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "algorithm": {"type": "string", "enum": ["gzip", "brotli", "none"]},
+            "compression_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+            "original_size": {"type": "integer", "minimum": 0},
+            "compressed_size": {"type": "integer", "minimum": 0}
+          }
+        },
+        "retention_policy": {
+          "type": "object",
+          "properties": {
+            "expires_at": {"type": "string", "format": "date-time"},
+            "priority": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+            "auto_archive": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "session_state": {
+      "type": "object",
+      "required": ["session_id", "start_time", "duration", "active_agent", "status"],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "pattern": "^[0-9]{8}[a-f0-9]{8}$",
+          "description": "Unique session identifier"
+        },
+        "start_time": {"type": "string", "format": "date-time"},
+        "duration": {"type": "integer", "minimum": 0, "description": "Session duration in seconds"},
+        "active_agent": {"type": "string", "description": "Currently active agent"},
+        "status": {
+          "type": "string", 
+          "enum": ["active", "paused", "completed", "error", "terminated"]
+        },
+        "project_context": {
+          "type": "object",
+          "properties": {
+            "working_directory": {"type": "string"},
+            "git_branch": {"type": "string"},
+            "git_commit": {"type": "string"},
+            "project_name": {"type": "string"},
+            "environment": {"type": "object"}
+          }
+        },
+        "claude_code_state": {
+          "type": "object",
+          "properties": {
+            "model": {"type": "string"},
+            "settings": {"type": "object"},
+            "active_commands": {"type": "array", "items": {"type": "string"}},
+            "hooks_enabled": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "context_usage": {
+      "type": "object",
+      "required": ["tokens_used", "baseline_tokens", "priming_tokens", "threshold_status"],
+      "properties": {
+        "tokens_used": {"type": "integer", "minimum": 0},
+        "baseline_tokens": {"type": "integer", "minimum": 0},
+        "priming_tokens": {"type": "integer", "minimum": 0},
+        "dynamic_tokens": {"type": "integer", "minimum": 0},
+        "peak_usage": {"type": "integer", "minimum": 0},
+        "threshold_status": {
+          "type": "string",
+          "enum": ["normal", "warning", "optimization", "critical"]
+        },
+        "files_read": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"},
+              "size": {"type": "integer"},
+              "last_modified": {"type": "string", "format": "date-time"},
+              "checksum": {"type": "string"}
+            }
+          }
+        },
+        "searches_performed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pattern": {"type": "string"},
+              "tool": {"type": "string", "enum": ["Grep", "Glob", "WebFetch"]},
+              "results_count": {"type": "integer"},
+              "timestamp": {"type": "string", "format": "date-time"}
+            }
+          }
+        },
+        "tool_usage": {
+          "type": "object",
+          "patternProperties": {
+            "^[A-Za-z]+$": {
+              "type": "object",
+              "properties": {
+                "count": {"type": "integer", "minimum": 0},
+                "total_time": {"type": "number", "minimum": 0},
+                "success_rate": {"type": "number", "minimum": 0, "maximum": 1}
+              }
+            }
+          }
+        }
+      }
+    },
+    "knowledge_graph": {
+      "type": "object",
+      "required": ["discoveries", "patterns", "decisions", "learning_outcomes"],
+      "properties": {
+        "discoveries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "content", "timestamp", "confidence"],
+            "properties": {
+              "type": {"type": "string", "enum": ["api", "library", "pattern", "bug", "solution"]},
+              "content": {"type": "string", "maxLength": 2000},
+              "timestamp": {"type": "string", "format": "date-time"},
+              "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+              "source": {"type": "string"},
+              "tags": {"type": "array", "items": {"type": "string"}},
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "target": {"type": "string"},
+                    "relationship": {"type": "string"},
+                    "strength": {"type": "number", "minimum": 0, "maximum": 1}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["pattern_id", "description", "occurrences", "reliability"],
+            "properties": {
+              "pattern_id": {"type": "string"},
+              "description": {"type": "string", "maxLength": 1000},
+              "occurrences": {"type": "integer", "minimum": 1},
+              "reliability": {"type": "number", "minimum": 0, "maximum": 1},
+              "examples": {"type": "array", "items": {"type": "string"}},
+              "anti_patterns": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["decision_id", "description", "rationale", "outcome"],
+            "properties": {
+              "decision_id": {"type": "string"},
+              "description": {"type": "string", "maxLength": 1000},
+              "rationale": {"type": "string", "maxLength": 2000},
+              "alternatives": {"type": "array", "items": {"type": "string"}},
+              "outcome": {"type": "string", "enum": ["successful", "failed", "partial", "unknown"]},
+              "timestamp": {"type": "string", "format": "date-time"},
+              "impact": {"type": "string", "enum": ["low", "medium", "high", "critical"]}
+            }
+          }
+        },
+        "learning_outcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["lesson", "evidence", "applicability"],
+            "properties": {
+              "lesson": {"type": "string", "maxLength": 1000},
+              "evidence": {"type": "string", "maxLength": 2000},
+              "applicability": {"type": "string", "maxLength": 500},
+              "future_value": {"type": "number", "minimum": 0, "maximum": 1}
+            }
+          }
+        }
+      }
+    },
+    "priming_state": {
+      "type": "object",
+      "properties": {
+        "scenarios_loaded": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "scenario": {"type": "string"},
+              "tokens_allocated": {"type": "integer", "minimum": 0},
+              "tokens_used": {"type": "integer", "minimum": 0},
+              "success_rate": {"type": "number", "minimum": 0, "maximum": 1},
+              "loaded_at": {"type": "string", "format": "date-time"},
+              "expires_at": {"type": "string", "format": "date-time"}
+            }
+          }
+        },
+        "budget_allocation": {
+          "type": "object",
+          "properties": {
+            "total_budget": {"type": "integer", "minimum": 0},
+            "used_budget": {"type": "integer", "minimum": 0},
+            "remaining_budget": {"type": "integer", "minimum": 0},
+            "efficiency_score": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        },
+        "cache_state": {
+          "type": "object",
+          "properties": {
+            "cached_scenarios": {"type": "array", "items": {"type": "string"}},
+            "cache_hits": {"type": "integer", "minimum": 0},
+            "cache_misses": {"type": "integer", "minimum": 0},
+            "cache_expiry": {"type": "string", "format": "date-time"}
+          }
+        }
+      }
+    },
+    "agent_coordination": {
+      "type": "object",
+      "properties": {
+        "active_agents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["agent_name", "status", "token_usage"],
+            "properties": {
+              "agent_name": {"type": "string"},
+              "status": {"type": "string", "enum": ["active", "idle", "suspended", "error"]},
+              "token_usage": {"type": "integer", "minimum": 0},
+              "task_queue": {"type": "array", "items": {"type": "string"}},
+              "performance_metrics": {
+                "type": "object",
+                "properties": {
+                  "avg_response_time": {"type": "number", "minimum": 0},
+                  "success_rate": {"type": "number", "minimum": 0, "maximum": 1},
+                  "efficiency_score": {"type": "number", "minimum": 0, "maximum": 1}
+                }
+              }
+            }
+          }
+        },
+        "sub_agents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "agent_name": {"type": "string"},
+              "parent_agent": {"type": "string"},
+              "task_description": {"type": "string"},
+              "status": {"type": "string", "enum": ["running", "completed", "failed", "queued"]},
+              "start_time": {"type": "string", "format": "date-time"},
+              "expected_completion": {"type": "string", "format": "date-time"}
+            }
+          }
+        },
+        "background_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "task_id": {"type": "string"},
+              "task_type": {"type": "string"},
+              "command": {"type": "string"},
+              "pid": {"type": "integer"},
+              "status": {"type": "string", "enum": ["running", "completed", "failed", "terminated"]},
+              "output_file": {"type": "string"},
+              "error_file": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "recovery_metadata": {
+      "type": "object",
+      "properties": {
+        "integrity_hash": {"type": "string", "description": "SHA-256 hash of essential data"},
+        "validation_status": {"type": "string", "enum": ["valid", "corrupted", "incomplete"]},
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["file", "service", "environment"]},
+              "path": {"type": "string"},
+              "required": {"type": "boolean"},
+              "status": {"type": "string", "enum": ["available", "missing", "modified"]}
+            }
+          }
+        },
+        "compatibility": {
+          "type": "object",
+          "properties": {
+            "awoc_version": {"type": "string"},
+            "claude_code_version": {"type": "string"},
+            "required_features": {"type": "array", "items": {"type": "string"}},
+            "breaking_changes": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      }
+    }
+  }
+}

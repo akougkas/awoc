@@ -27,8 +27,17 @@ Token Budget: `$ARGUMENTS_1` (default: 3000)
 !`BUDGET="${ARGUMENTS_1:-3000}"`
 
 ### Validate Scenario
-!`PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.. && pwd)"`
-!`if [ ! -f "$PROJECT_ROOT/.claude/commands/priming/prime-$SCENARIO.md" ]; then echo "❌ Invalid scenario: $SCENARIO"; echo "Available: bug-fixing, feature-dev, research, api-integration"; exit 1; fi`
+!`# Find project root more robustly`
+!`if [ -f "$(dirname "$0")/../../.claude/commands/priming/prime-$SCENARIO.md" ]; then`
+!`    PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"`
+!`elif [ -f ".claude/commands/priming/prime-$SCENARIO.md" ]; then`
+!`    PROJECT_ROOT="$PWD"`
+!`else`
+!`    echo "❌ Invalid scenario: $SCENARIO"`
+!`    echo "📋 Available scenarios: bug-fixing, feature-dev, research, api-integration"`
+!`    echo "💡 TIP: Run from project root or ensure priming files exist"`
+!`    exit 1`
+!`fi`
 
 ### Check Token Budget
 !`if command -v jq >/dev/null && [ -f "$HOME/.awoc/context/current_session.json" ]; then CURRENT=$(jq -r '.current_tokens // 0' "$HOME/.awoc/context/current_session.json"); if [ "$CURRENT" -gt 0 ] && [ $((CURRENT + BUDGET)) -gt 180000 ]; then echo "⚠️  Budget check: Adding $BUDGET tokens would exceed safe limits (current: $CURRENT)"; echo "Consider using a smaller budget or optimizing current context"; fi; fi`

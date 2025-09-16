@@ -217,6 +217,25 @@ main() {
     # Validate commands
     info "Validating commands..."
     local command_files=("commands/session-start.md" "commands/session-end.md")
+    
+    # Check for AWOC 2.0 commands
+    if [ -d ".claude/commands" ]; then
+        local awoc2_commands=(
+            "prime-dev.md"
+            "handoff-save.md"
+            "handoff-load.md"
+            "recover.md"
+        )
+        
+        for cmd_file in "${awoc2_commands[@]}"; do
+            if [ -f ".claude/commands/$cmd_file" ]; then
+                validate_file ".claude/commands/$cmd_file" "AWOC 2.0 command: $cmd_file"
+                validate_yaml_frontmatter ".claude/commands/$cmd_file" "name" "description"
+            else
+                warning "AWOC 2.0 command missing: .claude/commands/$cmd_file"
+            fi
+        done
+    fi
 
     for command_file in "${command_files[@]}"; do
         if validate_file "$command_file" "Command file"; then
@@ -237,7 +256,44 @@ main() {
     # Validate scripts
     info "Validating scripts..."
     validate_file "install.sh" "Installation script"
+    validate_executable "install.sh" "Installation script"
     validate_file "validate.sh" "Validation script"
+    validate_executable "validate.sh" "Validation script"
+    
+    # Validate core AWOC 2.0 scripts
+    if [ -d "scripts" ]; then
+        validate_directory "scripts" "Scripts directory"
+        
+        local core_scripts=(
+            "context-monitor.sh"
+            "token-logger.sh" 
+            "handoff-manager.sh"
+        )
+        
+        for script in "${core_scripts[@]}"; do
+            if [ -f "scripts/$script" ]; then
+                validate_executable "scripts/$script" "Core script: $script"
+            else
+                warning "Core script missing: scripts/$script"
+            fi
+        done
+        
+        # Test script validation
+        local test_scripts=(
+            "test-context-monitoring.sh"
+            "test-priming-system.sh"
+            "test-handoff-system.sh"
+        )
+        
+        for test_script in "${test_scripts[@]}"; do
+            if [ -f "scripts/$test_script" ]; then
+                validate_executable "scripts/$test_script" "Test script: $test_script"
+            else
+                warning "Test script missing: scripts/$test_script"
+            fi
+        done
+    fi
+    
     validate_executable "awoc" "AWOC command" || warning "AWOC command not properly installed"
 
     # Validate templates
@@ -248,9 +304,36 @@ main() {
         validate_file "$template_file" "Template file" || warning "Template missing: $template_file"
     done
 
-    # Validate scripts directory
+    # Validate scripts directory and run basic health checks
     if [ -d "scripts" ]; then
         validate_executable "scripts/generate-template.sh" "Template generator" || warning "Template generator not executable"
+        
+        # Run basic health checks on core scripts
+        info "Running basic health checks..."
+        
+        if [ -x "scripts/context-monitor.sh" ]; then
+            if timeout 10 scripts/context-monitor.sh --help >/dev/null 2>&1 || timeout 10 scripts/context-monitor.sh init --dry-run >/dev/null 2>&1; then
+                success "Context monitor basic health check passed"
+            else
+                warning "Context monitor may have issues"
+            fi
+        fi
+        
+        if [ -x "scripts/token-logger.sh" ]; then
+            if timeout 10 scripts/token-logger.sh --help >/dev/null 2>&1 || timeout 10 scripts/token-logger.sh init --dry-run >/dev/null 2>&1; then
+                success "Token logger basic health check passed"
+            else
+                warning "Token logger may have issues"
+            fi
+        fi
+        
+        # Check test script availability
+        if [ -x "scripts/test-runner.sh" ]; then
+            success "Comprehensive test runner available"
+            info "Run './scripts/test-runner.sh' for full system testing"
+        else
+            warning "Test runner not found - limited testing available"
+        fi
     fi
 
     # Summary
@@ -278,9 +361,11 @@ main() {
         fi
         echo ""
         echo "Next steps:"
-        echo "1. Test with: awoc session start \"Test session\""
-        echo "2. Verify git integration works"
-        echo "3. Explore available agents: awoc help"
+        echo "1. Run comprehensive tests: ./scripts/test-runner.sh"
+        echo "2. Test context monitoring: ./scripts/test-context-monitoring.sh"
+        echo "3. Test with: awoc session start \"Test session\""
+        echo "4. Verify git integration works"
+        echo "5. Explore available agents: awoc help"
     fi
 
     log "AWOC Validation completed - Passed: $VALIDATION_PASSED, Failed: $VALIDATION_FAILED, Warnings: $WARNINGS"

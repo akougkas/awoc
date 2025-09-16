@@ -8,17 +8,26 @@ set -euo pipefail
 
 # Source logging system
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/logging.sh" ]; then
-    # shellcheck source=./logging.sh
-    source "$SCRIPT_DIR/logging.sh"
-    init_logging
-else
-    # Fallback logging if logging.sh not available
+
+# Initialize logging with fallback
+init_logging_safe() {
+    if [ -f "$SCRIPT_DIR/logging.sh" ]; then
+        # shellcheck source=./logging.sh
+        if source "$SCRIPT_DIR/logging.sh" 2>/dev/null && init_logging 2>/dev/null; then
+            return 0
+        fi
+    fi
+    
+    # Fallback logging if logging.sh not available or fails
     log_info() { echo "[INFO] $1" >&2; }
     log_warning() { echo "[WARNING] $1" >&2; }
     log_error() { echo "[ERROR] $1" >&2; }
-    log_debug() { echo "[DEBUG] $1" >&2; }
-fi
+    log_debug() { [ "${DEBUG:-}" = "1" ] && echo "[DEBUG] $1" >&2 || true; }
+    return 0
+}
+
+# Initialize logging safely
+init_logging_safe
 
 # Configuration
 CONTEXT_DIR="${HOME}/.awoc/context"
@@ -198,14 +207,7 @@ update_session_usage() {
     .current_tokens += $tokens |
     .agent_tokens[$agent] = ((.agent_tokens[$agent] // 0) + $tokens) |
     .active_agents |= (if . | contains([$agent]) then . else . + [$agent] end) |
-    .last_update = $timestamp |
-    .operations += [{
-        "agent": $agent,
-        "operation": $op,
-        "tokens": $tokens,
-        "type": $type,
-        "timestamp": $timestamp
-    }]' "$SESSION_FILE" > "$temp_file" && mv "$temp_file" "$SESSION_FILE"
+    .last_update = $timestamp' "$SESSION_FILE" > "$temp_file" && mv "$temp_file" "$SESSION_FILE"
     
     rm -f "$temp_file"
 }
@@ -231,7 +233,7 @@ update_stats() {
     .peak_usage = (if .peak_usage < $tokens then $tokens else .peak_usage end) |
     .agents_monitored[$agent] = ((.agents_monitored[$agent] // 0) + $tokens) |
     .commands_tracked[$op] = ((.commands_tracked[$op] // 0) + 1) |
-    .last_update = $timestamp' "$STATS_FILE" > "$temp_file" && mv "$temp_file" "$SESSION_FILE"
+    .last_update = $timestamp' "$STATS_FILE" > "$temp_file" && mv "$temp_file" "$STATS_FILE"
     
     rm -f "$temp_file"
 }
@@ -296,7 +298,7 @@ get_context_stats() {
             session_data=$(echo "$session_data" | jq '. + {"session_id": "unknown"}')
         fi
         if ! echo "$session_data" | jq -e '.active_agents' >/dev/null 2>&1; then
-            session_data=$(echo "$session_data" | jq '. + {"active_agents": (.agents_monitored | keys // [])}')
+            session_data=$(echo "$session_data" | jq '. + {"active_agents": (.agent_tokens | keys // [])}')
         fi
     else
         session_data='{"current_tokens": 0, "session_id": "unknown", "active_agents": []}'
@@ -339,7 +341,7 @@ get_context_stats() {
             
             if [ "$active_agents" -gt 0 ]; then
                 echo "Agent Token Usage:"
-                echo "$session_data" | jq -r '.agent_tokens | to_entries[] | "  \(.key): \(.value) tokens"'
+                echo "$session_data" | jq -r '.agent_tokens // {} | to_entries[] | "  \(.key): \(.value) tokens"' 2>/dev/null || echo "  No agent data available"
                 echo ""
             fi
             

@@ -53,7 +53,13 @@ rotate_logs() {
     # Check if log file exists and is too large
     if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
         local log_size
-        log_size=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)
+        # Try different stat formats (macOS vs Linux) with better error handling
+        if command -v stat >/dev/null 2>&1; then
+            log_size=$(stat -c%s "$LOG_FILE" 2>/dev/null || stat -f%z "$LOG_FILE" 2>/dev/null || echo 0)
+        else
+            # Fallback using wc if stat not available
+            log_size=$(wc -c < "$LOG_FILE" 2>/dev/null || echo 0)
+        fi
 
         # Convert MAX_LOG_SIZE to bytes
         local max_size_bytes
@@ -68,16 +74,17 @@ rotate_logs() {
             for ((i=MAX_LOG_FILES; i>=1; i--)); do
                 if [ -f "${LOG_FILE}.$i" ]; then
                     if [ $i -eq $MAX_LOG_FILES ]; then
-                        rm -f "${LOG_FILE}.$i"
+                        rm -f "${LOG_FILE}.$i" 2>/dev/null || true
                     else
-                        mv "${LOG_FILE}.$i" "${LOG_FILE}.$((i+1))"
+                        mv "${LOG_FILE}.$i" "${LOG_FILE}.$((i+1))" 2>/dev/null || true
                     fi
                 fi
             done
 
-            # Move current log file
-            mv "$LOG_FILE" "${LOG_FILE}.1"
-            touch "$LOG_FILE"
+            # Move current log file with error handling
+            if mv "$LOG_FILE" "${LOG_FILE}.1" 2>/dev/null; then
+                touch "$LOG_FILE" 2>/dev/null || true
+            fi
         fi
     fi
 }

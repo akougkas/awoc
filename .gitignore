@@ -60,3 +60,5 @@ settings.local.json
 awoc-settings.json
 .env
 .env.*.env
+_archives
+

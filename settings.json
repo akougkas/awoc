@@ -6,7 +6,13 @@
   "env": {
     "AWOC_MAINTAIN_PROJECT_WORKING_DIR": "1",
     "BASH_MAX_TIMEOUT_MS": "120000",
-    "AWOC_MAX_OUTPUT_TOKENS": "8192"
+    "AWOC_MAX_OUTPUT_TOKENS": "8192",
+    "AWOC_SESSION_ID": "awoc-${RANDOM}",
+    "AWOC_LOG_LEVEL": "INFO",
+    "PROJECT_ROOT": "/home/akougkas/projects/awoc-claude-v2",
+    "HANDOFF_DIR": "/home/akougkas/.awoc/handoffs",
+    "CONTEXT_DIR": "/home/akougkas/.awoc/context",
+    "INTELLIGENCE_DIR": "/home/akougkas/.awoc/intelligence"
   },
   "permissions": {
     "allow": [
@@ -14,9 +20,11 @@
       "Read",
       "Write",
       "Edit",
-      "Glob",
+      "MultiEdit",
+      "Glob", 
       "Grep",
-      "WebFetch"
+      "WebFetch",
+      "Task"
     ],
     "deny": [
       "Read(.env)",
@@ -24,12 +32,22 @@
       "Write(.env)",
       "Write(.env.*)",
       "Read(**/secrets/**)",
-      "Write(**/secrets/**)"
+      "Write(**/secrets/**)",
+      "Read(/etc/**)",
+      "Write(/etc/**)",
+      "Bash(sudo:*)",
+      "Bash(su:*)",
+      "Bash(chmod 777:*)",
+      "Bash(chown:*)"
     ],
     "ask": [
       "Bash(rm -rf:*)",
-      "Bash(rm -r:*)",
-      "Bash(git push:*)"
+      "Bash(rm -r:*)", 
+      "Bash(git push:*)",
+      "Write(/home/akougkas/.ssh/**)",
+      "Read(/home/akougkas/.ssh/**)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)"
     ]
   },
   "agents": {
@@ -44,7 +62,23 @@
     ]
   },
   "commands": {
-    "enabled": ["session-start", "session-end"]
+    "enabled": [
+      "session-start", 
+      "session-end", 
+      "handoff-save", 
+      "handoff-load", 
+      "recover",
+      "delegate",
+      "delegate-parallel", 
+      "create-subagent",
+      "background-task",
+      "integrate-background",
+      "coordinate-workflow",
+      "context-analytics",
+      "context-optimize", 
+      "context-predict",
+      "context-learn"
+    ]
   },
   "context": {
     "monitoring": {
@@ -54,20 +88,213 @@
         "warning": 70,
         "optimization": 80,
         "critical": 90,
+        "emergency": 95,
         "max_tokens": 200000
+      },
+      "dynamic_thresholds": {
+        "enabled": true,
+        "adaptive_range": 15,
+        "task_specific": true,
+        "performance_based": true
+      },
+      "real_time_analytics": {
+        "enabled": true,
+        "update_interval": 5,
+        "prediction_horizon": 300,
+        "confidence_threshold": 0.75
       }
     },
     "optimization": {
       "auto_prime": true,
       "auto_handoff": true,
-      "compression": true
+      "compression": true,
+      "emergency_recovery": true,
+      "intelligent_optimization": {
+        "enabled": true,
+        "ml_predictions": true,
+        "strategy_selection": "adaptive",
+        "success_rate_target": 0.95
+      },
+      "semantic_compression": {
+        "enabled": true,
+        "preservation_threshold": 0.98,
+        "target_reduction": 0.30,
+        "max_processing_time": 30
+      }
+    },
+    "handoff": {
+      "auto_save_threshold": 85,
+      "retention_days": 7,
+      "compression": "gzip",
+      "validation_level": "strict"
+    },
+    "intelligence": {
+      "enabled": true,
+      "pattern_recognition": {
+        "enabled": true,
+        "confidence_threshold": 0.80,
+        "learning_rate": 0.1,
+        "model_update_frequency": "weekly"
+      },
+      "predictive_analytics": {
+        "enabled": true,
+        "overflow_prediction": true,
+        "optimization_prediction": true,
+        "accuracy_target": 0.85
+      },
+      "cascade_recovery": {
+        "enabled": true,
+        "max_essential_tokens": 50000,
+        "recovery_time_limit": 10,
+        "prevention_success_rate": 0.90
+      }
+    }
+  },
+  "hierarchical_agents": {
+    "delegation": {
+      "enabled": true,
+      "max_concurrent_delegations": 10,
+      "token_budget_limits": {
+        "architect": 12000,
+        "docs-fetcher": 5000,
+        "workforce": 10000,
+        "default": 5000
+      },
+      "priority_weights": {
+        "critical": 1.3,
+        "high": 1.1,
+        "medium": 1.0,
+        "low": 0.8
+      },
+      "retry_policies": {
+        "max_retries": 2,
+        "backoff_multiplier": 1.5,
+        "timeout_extension": 300
+      }
+    },
+    "background_tasks": {
+      "enabled": true,
+      "max_background_instances": 8,
+      "cleanup_retention_hours": 24,
+      "resource_limits": {
+        "max_memory_per_task": "2GB",
+        "max_disk_per_task": "1GB",
+        "total_token_budget": 50000
+      },
+      "monitoring": {
+        "progress_check_interval": 30,
+        "timeout_warnings": true,
+        "resource_alerts": true
+      }
+    },
+    "workflow_coordination": {
+      "enabled": true,
+      "execution_modes": ["sequential", "parallel", "adaptive", "pipeline"],
+      "default_mode": "adaptive",
+      "agent_selection": {
+        "intelligent_matching": true,
+        "workload_balancing": true,
+        "context_awareness": true
+      },
+      "resource_optimization": {
+        "token_pooling": true,
+        "context_sharing": true,
+        "result_caching": true
+      },
+      "failure_handling": {
+        "default_tolerance": 1,
+        "retry_strategies": ["reduce_scope", "switch_agent", "escalate"],
+        "recovery_modes": ["continue", "restart", "abort"]
+      }
+    },
+    "coordination_matrix": {
+      "agent_chains": {
+        "api_integration": [
+          "docs-fetcher:research → architect:design → workforce:implement → workforce:test"
+        ],
+        "feature_development": [
+          "docs-fetcher:research → architect:design → workforce:implement → workforce:test → docs-fetcher:document"
+        ],
+        "bug_investigation": [
+          "architect:analyze → docs-fetcher:research_solutions → workforce:fix → workforce:validate"
+        ],
+        "performance_optimization": [
+          "architect:profile → docs-fetcher:research_patterns → workforce:optimize → workforce:benchmark"
+        ]
+      },
+      "delegation_rules": {
+        "token_threshold": 15000,
+        "auto_delegate_patterns": [
+          "web scraping",
+          "bulk analysis", 
+          "long-running research",
+          "parallel testing"
+        ],
+        "background_triggers": [
+          "plan generation",
+          "comprehensive refactoring",
+          "multi-file analysis",
+          "documentation generation"
+        ]
+      }
     }
   },
   "hooks": {
     "enabled": true,
-    "PreToolUse": "scripts/context-monitor.sh track ${AGENT:-unknown} tool_use ${ESTIMATED_TOKENS:-0} execution",
-    "UserPromptSubmit": "scripts/context-monitor.sh check ${CURRENT_CONTEXT_TOKENS:-0}",
-    "SessionEnd": "scripts/token-logger.sh report json today",
-    "PreCompact": "scripts/context-monitor.sh optimize auto"
+    "PreToolUse": [
+      "./scripts/context-monitor.sh track ${AGENT:-unknown} tool_use ${ESTIMATED_TOKENS:-0} execution 2>/dev/null || echo 'Context monitor unavailable'",
+      "./scripts/context-intelligence.sh predict overflow ${CURRENT_CONTEXT_TOKENS:-0} ${TASK_TYPE:-medium} ${AGENT_COUNT:-1} 2>/dev/null || true"
+    ],
+    "UserPromptSubmit": [
+      "./scripts/context-monitor.sh check ${CURRENT_CONTEXT_TOKENS:-0} 2>/dev/null || true",
+      "./scripts/overflow-prevention.sh detect ${CURRENT_CONTEXT_TOKENS:-0} '{\"active_agents\":${AGENT_COUNT:-1}}' 2>/dev/null || true"
+    ],
+    "SessionEnd": [
+      "./scripts/handoff-manager.sh save automatic gzip medium 2>/dev/null || echo 'Handoff save failed'",
+      "./scripts/token-logger.sh report json today 2>/dev/null || true",
+      "./scripts/context-intelligence.sh learn update_models ~/.awoc/sessions 2>/dev/null || true"
+    ],
+    "PreCompact": [
+      "./scripts/handoff-manager.sh save emergency gzip critical 2>/dev/null || echo 'Emergency handoff failed'", 
+      "./scripts/context-optimizer.sh emergency ${CURRENT_CONTEXT_TOKENS:-0} 5 2>/dev/null || true"
+    ],
+    "ContextThreshold": {
+      "75": "./scripts/context-optimizer.sh predictive ${CURRENT_CONTEXT_TOKENS:-0} '{\"task_type\":\"${TASK_TYPE:-medium}\"}' 25 2>/dev/null || true",
+      "85": "./scripts/context-optimizer.sh reactive ${CURRENT_CONTEXT_TOKENS:-0} optimization medium 2>/dev/null || true",
+      "90": "./scripts/overflow-prevention.sh prevent ${CURRENT_CONTEXT_TOKENS:-0} '{\"risk_level\":\"high\"}' 2>/dev/null || true",
+      "95": "./scripts/overflow-prevention.sh cascade ${CURRENT_CONTEXT_TOKENS:-0} '{\"severity\":\"critical\"}' 2>/dev/null || true"
+    },
+    "IntelligenceHooks": {
+      "enabled": true,
+      "PatternDetection": "./scripts/pattern-analyzer.py analyze --session-file=${CONTEXT_DIR}/session_history.jsonl 2>/dev/null || true",
+      "OptimizationTrigger": "./scripts/context-optimizer.sh autonomous '{\"total_tokens\":${CURRENT_CONTEXT_TOKENS:-0},\"task_type\":\"${TASK_TYPE:-medium}\",\"active_agents\":${AGENT_COUNT:-1}}' 2>/dev/null || true",
+      "LearningUpdate": "./scripts/context-intelligence.sh learn patterns ${CONTEXT_DIR}/session_history.jsonl optimization_effectiveness 2>/dev/null || true",
+      "RiskAssessment": "./scripts/overflow-prevention.sh detect ${CURRENT_CONTEXT_TOKENS:-0} '{\"growth_velocity\":${GROWTH_VELOCITY:-0},\"agent_count\":${AGENT_COUNT:-1}}' 2>/dev/null || true"
+    }
+  },
+  "enterprise": {
+    "enabled": false,
+    "policy_enforcement": {
+      "require_user_approval": false,
+      "audit_all_delegations": false,
+      "encrypt_handoffs": false,
+      "token_budget_enforcement": "warning"
+    },
+    "managed_settings_path": "/Library/Application Support/ClaudeCode/managed-settings.json",
+    "telemetry": {
+      "enabled": false,
+      "endpoint": null,
+      "metrics": ["token_usage", "agent_performance", "error_rates"]
+    },
+    "security": {
+      "sandbox_delegations": true,
+      "validate_agent_sources": true,
+      "max_delegation_depth": 3,
+      "resource_limits": {
+        "max_memory_per_agent": "2GB",
+        "max_execution_time": "10m",
+        "max_file_operations": 1000
+      }
+    }
   }
 }

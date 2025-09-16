@@ -15,10 +15,22 @@ Changes: !`git diff --stat HEAD`
 !`if [ -f "CHANGELOG.md" ]; then echo "## $(date +%Y-%m-%d)\n- $ARGUMENTS\n$(cat CHANGELOG.md)" > CHANGELOG.md; fi`
 
 ### Stage and Commit
-!`git add -A`
-!`git commit -m "$ARGUMENTS
+!`if [ -n "$(git status --porcelain)" ]; then`
+!`    git add -A`
+!`    if git commit -m "${ARGUMENTS:-Development session complete}
 
-Development session complete - $(date)"`
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"; then`
+!`        echo "✅ Changes committed successfully"`
+!`    else`
+!`        echo "❌ ERROR: Failed to commit changes"`
+!`        echo "💡 TIP: Check git status and resolve any issues"`
+!`        exit 1`
+!`    fi`
+!`else`
+!`    echo "ℹ️  No changes to commit"`
+!`fi`
 
 ### Verify Clean State
 !`git status`

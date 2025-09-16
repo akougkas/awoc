@@ -98,42 +98,42 @@ fi
 # Test 5: Basic functionality
 test_info "Testing basic functionality..."
 
-# Test context tracking
-if ./scripts/context-monitor.sh track test-agent test-operation 1000 test >/dev/null 2>&1; then
+# Test context tracking with timeout
+if timeout 10 ./scripts/context-monitor.sh track test-agent test-operation 1000 test >/dev/null 2>&1; then
     test_passed "Context tracking works"
 else
-    test_failed "Context tracking failed"
+    test_failed "Context tracking failed or timed out"
 fi
 
-# Test token logging
-if ./scripts/token-logger.sh log test-agent test-operation 1000 test user >/dev/null 2>&1; then
+# Test token logging with timeout
+if timeout 10 ./scripts/token-logger.sh log test-agent test-operation 1000 test user >/dev/null 2>&1; then
     test_passed "Token logging works"
 else
-    test_failed "Token logging failed"
+    test_failed "Token logging failed or timed out"
 fi
 
 # Test 6: Statistics and reporting
 test_info "Testing statistics and reporting..."
 
-# Test context stats
-if ./scripts/context-monitor.sh stats human >/dev/null 2>&1; then
+# Test context stats with timeout
+if timeout 10 ./scripts/context-monitor.sh stats human >/dev/null 2>&1; then
     test_passed "Context statistics generation works"
 else
-    test_failed "Context statistics generation failed"
+    test_failed "Context statistics generation failed or timed out"
 fi
 
-# Test budget status
-if ./scripts/token-logger.sh budget >/dev/null 2>&1; then
+# Test budget status with timeout
+if timeout 10 ./scripts/token-logger.sh budget >/dev/null 2>&1; then
     test_passed "Budget status reporting works"
 else
-    test_failed "Budget status reporting failed"
+    test_failed "Budget status reporting failed or timed out"
 fi
 
-# Test report generation
-if ./scripts/token-logger.sh report human today >/dev/null 2>&1; then
+# Test report generation with timeout
+if timeout 10 ./scripts/token-logger.sh report human today >/dev/null 2>&1; then
     test_passed "Token usage reporting works"
 else
-    test_failed "Token usage reporting failed"
+    test_failed "Token usage reporting failed or timed out"
 fi
 
 # Test 7: JSON validation
@@ -167,18 +167,32 @@ fi
 # Test 8: Error handling
 test_info "Testing error handling..."
 
-# Test invalid token count
-if ./scripts/context-monitor.sh track test-agent test-operation invalid-tokens 2>/dev/null; then
-    test_passed "Context monitor handles invalid token counts gracefully"
+# Test invalid token count - should fail gracefully
+if timeout 5 ./scripts/context-monitor.sh track test-agent test-operation invalid-tokens 2>/dev/null; then
+    test_failed "Context monitor should reject invalid token counts"
 else
-    test_failed "Context monitor doesn't handle invalid token counts"
+    test_passed "Context monitor handles invalid token counts gracefully"
 fi
 
-# Test nonexistent agent
-if ./scripts/token-logger.sh log nonexistent-agent test 100 2>/dev/null; then
-    test_passed "Token logger handles nonexistent agents gracefully"
+# Test nonexistent agent - should handle gracefully
+if timeout 5 ./scripts/token-logger.sh log "" test 100 2>/dev/null; then
+    test_failed "Token logger should reject empty agent names"
 else
-    test_failed "Token logger doesn't handle nonexistent agents"
+    test_passed "Token logger handles invalid agent names gracefully"
+fi
+
+# Test edge case: extremely large token count
+if timeout 5 ./scripts/context-monitor.sh track test-agent test-operation 999999999 test 2>/dev/null; then
+    test_passed "Context monitor handles large token counts"
+else
+    test_failed "Context monitor fails with large token counts"
+fi
+
+# Test edge case: negative token count
+if timeout 5 ./scripts/context-monitor.sh track test-agent test-operation -100 test 2>/dev/null; then
+    test_failed "Context monitor should reject negative token counts"
+else
+    test_passed "Context monitor rejects negative token counts"
 fi
 
 # Summary
