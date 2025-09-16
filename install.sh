@@ -143,6 +143,12 @@ install_awoc() {
         fi
     done
 
+    # Copy MCP registry (outside resources)
+    if [[ -f "$source_dir/mcp.yaml" ]]; then
+        cp "$source_dir/mcp.yaml" "$AWOC_CONFIG_DIR/"
+        log_success "Installed: MCP registry"
+    fi
+
     # Make scripts executable
     if [[ -d "$AWOC_RESOURCES/scripts" ]]; then
         chmod +x "$AWOC_RESOURCES"/scripts/*.sh 2>/dev/null || true

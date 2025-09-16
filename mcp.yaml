@@ -1,0 +1,117 @@
+# AWOC MCP Registry
+# Central registry of Model Context Protocol servers for AWOC agents
+# This file is installed to ~/.config/awoc/mcp.yaml
+# Run 'awoc mcp setup' after installation to configure MCPs for your project
+
+# Documentation and real-time code examples
+context7:
+  description: "Provides up-to-date documentation and code examples for any library"
+  recommended_for: [api-researcher, learning-assistant]
+  category: "Development Tools"
+  type: stdio
+  command: "npx"
+  args: ["-y", "@upstash/context7-mcp"]
+  env_required: []
+  setup_notes: "Automatically fetches current library docs - no API key needed"
+
+# Web scraping and data collection
+brightdata:
+  description: "Advanced web scraping and data collection capabilities"
+  recommended_for: [data-analyst, api-researcher, content-writer]
+  category: "Data Collection"
+  type: stdio
+  command: "npx"
+  args: ["-y", "@brightdata/mcp"]
+  env_required: ["BRIGHTDATA_API_TOKEN"]
+  setup_notes: "Requires Brightdata account - get API token from dashboard"
+
+# GitHub integration
+github:
+  description: "Access GitHub repos, issues, PRs, and code search"
+  recommended_for: [project-manager, api-researcher]
+  category: "Development Tools"
+  type: stdio
+  command: "npx"
+  args: ["-y", "@modelcontextprotocol/server-github"]
+  env_required: ["GITHUB_PERSONAL_ACCESS_TOKEN"]
+  setup_notes: "Create PAT at github.com/settings/tokens"
+
+# Google Scholar and academic papers
+arxiv:
+  description: "Search and retrieve academic papers from arXiv"
+  recommended_for: [content-writer, learning-assistant, api-researcher]
+  category: "Research"
+  type: stdio
+  command: "npx"
+  args: ["-y", "@modelcontextprotocol/server-arxiv"]
+  env_required: []
+  setup_notes: "Free access to academic papers - no API key needed"
+
+# Notion integration
+notion:
+  description: "Read and write to Notion workspace"
+  recommended_for: [project-manager, content-writer]
+  category: "Project Management"
+  type: http
+  url: "https://mcp.notion.com/mcp"
+  env_required: []
+  setup_notes: "Requires OAuth authentication via /mcp command in Claude Code"
+
+# Linear issue tracking
+linear:
+  description: "Manage Linear issues, projects, and roadmaps"
+  recommended_for: [project-manager]
+  category: "Project Management"
+  type: sse
+  url: "https://mcp.linear.app/sse"
+  env_required: []
+  setup_notes: "Requires OAuth authentication via /mcp command in Claude Code"
+
+# Sentry error monitoring
+sentry:
+  description: "Monitor and debug production errors"
+  recommended_for: [api-researcher, project-manager]
+  category: "Development Tools"
+  type: http
+  url: "https://mcp.sentry.dev/mcp"
+  env_required: []
+  setup_notes: "Requires OAuth authentication via /mcp command in Claude Code"
+
+# Figma design access
+figma:
+  description: "Access and export Figma designs"
+  recommended_for: [creative-assistant, content-writer]
+  category: "Design"
+  type: http
+  url: "http://127.0.0.1:3845/mcp"
+  env_required: []
+  setup_notes: "Requires Figma Desktop with Dev Mode MCP Server running"
+
+# PostgreSQL database
+postgresql:
+  description: "Query and manage PostgreSQL databases"
+  recommended_for: [data-analyst]
+  category: "Databases"
+  type: stdio
+  command: "npx"
+  args: ["-y", "@modelcontextprotocol/server-postgres"]
+  env_required: ["POSTGRES_CONNECTION_STRING"]
+  setup_notes: "Use read-only connection string for safety"
+
+# Filesystem access (sandboxed)
+filesystem:
+  description: "Safe file system operations within project"
+  recommended_for: [all]
+  category: "System"
+  type: stdio
+  command: "npx"
+  args: ["-y", "@modelcontextprotocol/server-filesystem", "--allowed-directories", "."]
+  env_required: []
+  setup_notes: "Restricted to current project directory for safety"
+
+# Notes:
+# - stdio servers run locally on your machine
+# - http/sse servers connect to remote services
+# - OAuth servers require authentication via Claude Code's /mcp command
+# - Always use environment variables for sensitive data
+# - Run 'awoc mcp setup' to configure MCPs for your project

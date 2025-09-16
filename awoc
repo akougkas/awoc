@@ -1,0 +1,771 @@
+#!/usr/bin/env bash
+
+# AWOC - Agentic Workflows Orchestration Cabinet
+# Deploy AI agent configurations to project directories
+
+set -euo pipefail
+
+# Version
+readonly AWOC_VERSION="2.0.0"
+readonly AWOC_CONFIG_DIR="${HOME}/.config/awoc"
+readonly AWOC_RESOURCES="${AWOC_CONFIG_DIR}/resources"
+readonly AWOC_BACKUPS="${AWOC_CONFIG_DIR}/backups"
+
+# Colors
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly BLUE='\033[0;34m'
+readonly YELLOW='\033[1;33m'
+readonly BOLD='\033[1m'
+readonly NC='\033[0m'
+
+# Icons
+readonly CHECK="✅"
+readonly CROSS="❌"
+readonly INFO="ℹ️"
+readonly ROCKET="🚀"
+readonly WARNING="⚠️"
+readonly LOCK="🔐"
+
+# Helper functions
+log_info() { echo -e "${BLUE}${INFO}${NC} $*"; }
+log_success() { echo -e "${GREEN}${CHECK}${NC} $*"; }
+log_error() { echo -e "${RED}${CROSS}${NC} $*" >&2; }
+log_warning() { echo -e "${YELLOW}${WARNING}${NC} $*" >&2; }
+
+show_version() {
+    echo "AWOC v${AWOC_VERSION}"
+    echo "Agentic Workflows Orchestration Cabinet"
+    echo "© 2025 Anthony Kougkas"
+}
+
+show_help() {
+    cat << EOF
+${ROCKET} AWOC - Agentic Workflows Orchestration Cabinet v${AWOC_VERSION}
+
+USAGE:
+    awoc <command> [options]
+
+COMMANDS:
+    install -c <client> -d <dir>   Install AWOC to project directory
+    uninstall -d <dir>              Remove AWOC from directory
+    validate -d <dir>               Validate AWOC installation
+    restore -d <dir>                Restore from backup
+    list                            List available agents and commands
+    mcp <action> [args]             Configure MCP servers for project
+    config                          Show AWOC configuration
+    doctor                          Diagnose common issues
+    update                          Update AWOC to latest version
+    version                         Show version information
+    help                            Show this help message
+
+OPTIONS:
+    -c, --client    AI client (claude, opencode, gemini) [default: claude]
+    -d, --dir       Target directory [default: current directory]
+    -f, --force     Force reinstall, replacing existing settings
+
+EXAMPLES:
+    awoc install -c claude -d .             # Install to current project
+    awoc install -c claude -d ~/project     # Install to specific project
+    awoc install -c claude -d ~/            # Install globally (not recommended)
+    awoc install -d . -f                     # Force reinstall with latest settings
+    awoc uninstall -d .                     # Remove from current project
+    awoc validate -d ~/project              # Validate installation
+
+MCP COMMANDS:
+    awoc mcp list                            # List available MCP servers
+    awoc mcp setup -d .                      # Interactive MCP setup for project
+    awoc mcp enable context7 -d .            # Enable specific MCP for project
+
+For more information: https://github.com/akougkas/awoc
+EOF
+}
+
+# Check if AWOC is installed
+check_awoc_installation() {
+    if [[ ! -d "$AWOC_CONFIG_DIR" ]]; then
+        log_error "AWOC is not installed"
+        echo ""
+        echo "Install AWOC first with:"
+        echo "  ${BOLD}curl -fsSL https://github.com/akougkas/awoc/raw/main/install.sh | bash${NC}"
+        exit 1
+    fi
+
+    if [[ ! -d "$AWOC_RESOURCES" ]]; then
+        log_error "AWOC resources not found at $AWOC_RESOURCES"
+        log_info "Try reinstalling AWOC"
+        exit 1
+    fi
+}
+
+# Parse command line arguments
+parse_install_args() {
+    local client="claude"
+    local dir="."
+    local force="false"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -c|--client)
+                client="$2"
+                shift 2
+                ;;
+            -d|--dir)
+                dir="$2"
+                shift 2
+                ;;
+            -f|--force)
+                force="true"
+                shift
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+
+    echo "$client|$dir|$force"
+}
+
+# Check if installing to home directory
+is_global_install() {
+    local dir="$1"
+    local realpath=$(realpath "$dir" 2>/dev/null || echo "$dir")
+
+    if [[ "$realpath" == "$HOME" ]] || [[ "$realpath" == "/" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# Show warning for global installation
+show_global_warning() {
+    local dir="$1"
+    local client="$2"
+
+    cat << EOF
+
+${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+${YELLOW}${LOCK} Global Installation Warning${NC}
+${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+
+You are installing AWOC globally to: ${BOLD}$dir/.${client}${NC}
+
+${YELLOW}${WARNING} Global installation is NOT recommended because:${NC}
+  • It affects ALL your projects
+  • Makes it harder to manage project-specific configurations
+  • Can interfere with existing Claude Code settings
+
+${GREEN}✅ Recommended approach:${NC}
+  Install AWOC to individual project directories:
+  ${BLUE}cd ~/projects/my-project${NC}
+  ${BLUE}awoc install -c ${client} -d .${NC}
+
+This gives you:
+  • Project-specific agent configurations
+  • Better version control integration
+  • Isolated settings per project
+  • Easy removal when needed
+
+EOF
+
+    read -p "Do you still want to proceed with global installation? (yes/N): " -r
+    echo
+
+    if [[ ! "$REPLY" =~ ^[Yy][Ee][Ss]$ ]]; then
+        log_info "Installation cancelled. Use project-specific installation instead."
+        exit 0
+    fi
+}
+
+# Create backup before installation
+create_backup() {
+    local target_dir="$1"
+    local client="$2"
+    local client_dir="${target_dir}/.${client}"
+
+    if [[ -d "$client_dir" ]] && [[ "$(ls -A "$client_dir" 2>/dev/null)" ]]; then
+        local backup_name="backup_${client}_$(date +%Y%m%d_%H%M%S)"
+        local backup_path="${AWOC_BACKUPS}/${backup_name}"
+
+        log_info "Creating backup of existing configuration..."
+        mkdir -p "$backup_path"
+        cp -r "$client_dir"/* "$backup_path/" 2>/dev/null || true
+
+        # Save metadata
+        cat > "$backup_path/.backup_info" << EOF
+{
+    "original_path": "$client_dir",
+    "backup_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+    "awoc_version": "$AWOC_VERSION",
+    "client": "$client"
+}
+EOF
+
+        log_success "Backup created: $backup_path"
+        echo "$backup_path"
+    else
+        echo ""
+    fi
+}
+
+# Install AWOC to target directory
+cmd_install() {
+    local args="$*"
+    IFS='|' read -r client dir force <<< "$(parse_install_args $args)"
+
+    # Validate client
+    case "$client" in
+        claude|opencode|gemini)
+            ;;
+        *)
+            log_error "Unsupported client: $client"
+            log_info "Supported clients: claude, opencode, gemini"
+            exit 1
+            ;;
+    esac
+
+    # Expand and validate directory
+    dir=$(realpath "$dir" 2>/dev/null || echo "$dir")
+    dir="${dir/#\~/$HOME}"
+
+    if [[ ! -d "$dir" ]]; then
+        log_error "Directory does not exist: $dir"
+        log_info "Create it first: mkdir -p $dir"
+        exit 1
+    fi
+
+    # Check AWOC installation
+    check_awoc_installation
+
+    # Show warning for global installation
+    if is_global_install "$dir"; then
+        show_global_warning "$dir" "$client"
+    fi
+
+    local client_dir="${dir}/.${client}"
+
+    log_info "Installing AWOC for ${BOLD}${client}${NC} to: ${BOLD}${dir}${NC}"
+
+    # Create backup if needed
+    local backup_path
+    backup_path=$(create_backup "$dir" "$client")
+
+    # Create directory structure
+    log_info "Creating .${client} directory structure..."
+    mkdir -p "$client_dir"/{agents,commands,output-styles,scripts,templates,schemas}
+
+    # Deploy configurations
+    log_info "Deploying agents..."
+    if [[ -d "$AWOC_RESOURCES/agents" ]]; then
+        cp -r "$AWOC_RESOURCES"/agents/* "$client_dir/agents/" 2>/dev/null || true
+    fi
+
+    log_info "Deploying commands..."
+    if [[ -d "$AWOC_RESOURCES/commands" ]]; then
+        cp -r "$AWOC_RESOURCES"/commands/* "$client_dir/commands/" 2>/dev/null || true
+    fi
+
+    log_info "Deploying output styles..."
+    if [[ -d "$AWOC_RESOURCES/output-styles" ]]; then
+        cp -r "$AWOC_RESOURCES"/output-styles/* "$client_dir/output-styles/" 2>/dev/null || true
+    fi
+
+    log_info "Deploying scripts..."
+    if [[ -d "$AWOC_RESOURCES/scripts" ]]; then
+        cp -r "$AWOC_RESOURCES"/scripts/* "$client_dir/scripts/" 2>/dev/null || true
+        chmod +x "$client_dir"/scripts/*.sh 2>/dev/null || true
+    fi
+
+    log_info "Deploying templates..."
+    if [[ -d "$AWOC_RESOURCES/templates" ]]; then
+        cp -r "$AWOC_RESOURCES"/templates/* "$client_dir/templates/" 2>/dev/null || true
+    fi
+
+    log_info "Deploying schemas..."
+    if [[ -d "$AWOC_RESOURCES/schemas" ]]; then
+        cp -r "$AWOC_RESOURCES"/schemas/* "$client_dir/schemas/" 2>/dev/null || true
+    fi
+
+    # Handle settings.json
+    if [[ -f "$client_dir/settings.json" ]]; then
+        if [[ "$force" == "true" ]]; then
+            log_info "Force reinstall: Replacing settings.json..."
+            cp "$client_dir/settings.json" "$client_dir/settings.json.pre-awoc"
+            cp "$AWOC_RESOURCES/settings.json" "$client_dir/settings.json"
+            log_success "Settings replaced with latest version (backup: settings.json.pre-awoc)"
+        elif [[ -f "$client_dir/.awoc" ]]; then
+            # This is a reinstallation - replace settings to ensure fixes are applied
+            log_info "Reinstalling AWOC: Updating settings.json..."
+            cp "$client_dir/settings.json" "$client_dir/settings.json.pre-awoc"
+            cp "$AWOC_RESOURCES/settings.json" "$client_dir/settings.json"
+            log_success "Settings updated to latest version (backup: settings.json.pre-awoc)"
+        else
+            # Preserve existing settings for first-time conflicts
+            log_info "Preserving existing settings.json..."
+            cp "$client_dir/settings.json" "$client_dir/settings.json.pre-awoc"
+            cp "$AWOC_RESOURCES/settings.json" "$client_dir/settings.awoc.json"
+            log_warning "Existing settings.json preserved as settings.json.pre-awoc"
+            log_info "AWOC settings saved as settings.awoc.json - manual merge required"
+        fi
+    else
+        cp "$AWOC_RESOURCES/settings.json" "$client_dir/"
+    fi
+
+    # Create AWOC marker file
+    cat > "$client_dir/.awoc" << EOF
+{
+    "version": "$AWOC_VERSION",
+    "installed": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+    "client": "$client",
+    "project_dir": "$dir",
+    "backup": "${backup_path:-none}"
+}
+EOF
+
+    # Create CLAUDE.md if it doesn't exist
+    if [[ ! -f "$client_dir/CLAUDE.md" ]]; then
+        cat > "$client_dir/CLAUDE.md" << 'EOF'
+# Project Configuration
+
+This project uses AWOC (Agentic Workflows Orchestration Cabinet) for enhanced AI agent capabilities.
+
+## Available Agents
+- api-researcher: Technical documentation specialist
+- content-writer: Content creation specialist
+- data-analyst: Data analysis specialist
+- project-manager: Project coordination specialist
+- learning-assistant: Educational support specialist
+- creative-assistant: Creative tasks specialist
+
+## Commands
+Use /awoc-help to see all available commands.
+
+---
+Generated by AWOC v2.0.0
+EOF
+    fi
+
+    log_success "AWOC installed successfully!"
+
+    if [[ -n "$backup_path" ]]; then
+        echo ""
+        echo "📦 Backup location: ${BOLD}$backup_path${NC}"
+        echo "   Restore with: ${BLUE}awoc restore -d $dir${NC}"
+    fi
+
+    echo ""
+    echo "Project structure created:"
+    echo "  ${BOLD}${dir}/${NC}"
+    echo "  └── ${BOLD}.${client}/${NC}"
+    echo "      ├── agents/"
+    echo "      ├── commands/"
+    echo "      ├── scripts/"
+    echo "      ├── settings.json"
+    echo "      └── CLAUDE.md"
+
+    echo ""
+    echo "Next steps:"
+    echo "  1. ${BLUE}cd $dir${NC}"
+    echo "  2. Open ${client^} Code in this directory"
+    echo "  3. Try: ${BLUE}/awoc-help${NC} to see available commands"
+}
+
+# Uninstall AWOC from directory
+cmd_uninstall() {
+    local dir="."
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -d|--dir)
+                dir="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    dir=$(realpath "$dir" 2>/dev/null || echo "$dir")
+
+    # Find client directories
+    local found=false
+    for client in claude opencode gemini; do
+        local client_dir="${dir}/.${client}"
+        if [[ -f "$client_dir/.awoc" ]]; then
+            found=true
+            log_info "Found AWOC installation for ${client} in: $dir"
+
+            # Check for backup
+            local backup_path=$(jq -r '.backup // "none"' "$client_dir/.awoc" 2>/dev/null)
+
+            if [[ "$backup_path" != "none" ]] && [[ -d "$backup_path" ]]; then
+                read -p "Restore original configuration from backup? (Y/n): " -r
+                if [[ ! "$REPLY" =~ ^[Nn]$ ]]; then
+                    cmd_restore -d "$dir"
+                    continue
+                fi
+            fi
+
+            read -p "Remove AWOC for ${client}? (y/N): " -r
+            if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+                # Remove AWOC files
+                rm -rf "$client_dir/agents"
+                rm -rf "$client_dir/commands"
+                rm -rf "$client_dir/scripts"
+                rm -rf "$client_dir/templates"
+                rm -rf "$client_dir/schemas"
+                rm -f "$client_dir/.awoc"
+                rm -f "$client_dir/settings.awoc.json"
+
+                log_success "AWOC removed for ${client}"
+            fi
+        fi
+    done
+
+    if [[ "$found" == false ]]; then
+        log_error "No AWOC installation found in: $dir"
+        exit 1
+    fi
+}
+
+# Restore from backup
+cmd_restore() {
+    local dir="."
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -d|--dir)
+                dir="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    dir=$(realpath "$dir" 2>/dev/null || echo "$dir")
+
+    # Find AWOC installations
+    local found=false
+    for client in claude opencode gemini; do
+        local client_dir="${dir}/.${client}"
+        if [[ -f "$client_dir/.awoc" ]]; then
+            found=true
+            local backup_path=$(jq -r '.backup // "none"' "$client_dir/.awoc" 2>/dev/null)
+
+            if [[ "$backup_path" != "none" ]] && [[ -d "$backup_path" ]]; then
+                log_info "Restoring ${client} from: $backup_path"
+
+                # Remove current installation
+                rm -rf "$client_dir"/*
+
+                # Restore from backup
+                cp -r "$backup_path"/* "$client_dir/"
+                rm -f "$client_dir/.backup_info"
+
+                log_success "Configuration restored for ${client}"
+            else
+                log_warning "No backup found for ${client}"
+            fi
+        fi
+    done
+
+    if [[ "$found" == false ]]; then
+        log_error "No AWOC installation found in: $dir"
+        exit 1
+    fi
+}
+
+# Validate installation
+cmd_validate() {
+    local dir="."
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -d|--dir)
+                dir="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    dir=$(realpath "$dir" 2>/dev/null || echo "$dir")
+
+    log_info "Validating AWOC installation in: $dir"
+
+    local found=false
+    for client in claude opencode gemini; do
+        local client_dir="${dir}/.${client}"
+        if [[ -f "$client_dir/.awoc" ]]; then
+            found=true
+            echo ""
+            log_info "Checking ${client} installation..."
+
+            local errors=0
+
+            # Check directories
+            for subdir in agents commands scripts; do
+                if [[ -d "$client_dir/$subdir" ]]; then
+                    log_success "Directory found: $subdir"
+                else
+                    log_error "Directory missing: $subdir"
+                    ((errors++))
+                fi
+            done
+
+            # Check key files
+            if [[ -f "$client_dir/settings.json" ]]; then
+                log_success "Settings file found"
+            else
+                log_error "Settings file missing"
+                ((errors++))
+            fi
+
+            if [[ $errors -eq 0 ]]; then
+                log_success "${client^} installation is valid"
+            else
+                log_error "${client^} installation has $errors errors"
+            fi
+        fi
+    done
+
+    if [[ "$found" == false ]]; then
+        log_error "No AWOC installation found in: $dir"
+        exit 1
+    fi
+}
+
+# List available components
+cmd_list() {
+    check_awoc_installation
+
+    echo "${ROCKET} AWOC Available Components"
+    echo ""
+
+    echo "📤 Agents:"
+    if [[ -d "$AWOC_RESOURCES/agents" ]]; then
+        for agent in "$AWOC_RESOURCES"/agents/*.md; do
+            if [[ -f "$agent" ]]; then
+                local name=$(basename "$agent" .md)
+                local desc=$(grep "^description:" "$agent" 2>/dev/null | cut -d: -f2- | xargs)
+                echo "  • $name - ${desc:-No description}"
+            fi
+        done
+    fi
+
+    echo ""
+    echo "📝 Commands:"
+    if [[ -d "$AWOC_RESOURCES/commands" ]]; then
+        for cmd in "$AWOC_RESOURCES"/commands/*.md; do
+            if [[ -f "$cmd" ]]; then
+                local name=$(basename "$cmd" .md)
+                echo "  • /$name"
+            fi
+        done
+    fi
+
+    echo ""
+    echo "🤖 Supported Clients:"
+    echo "  • claude - Claude Code"
+    echo "  • opencode - OpenCode"
+    echo "  • gemini - Gemini"
+}
+
+# Show configuration
+cmd_config() {
+    if [[ -f "$AWOC_CONFIG_DIR/config.json" ]]; then
+        echo "AWOC Configuration:"
+        echo ""
+        cat "$AWOC_CONFIG_DIR/config.json" | jq '.' 2>/dev/null || cat "$AWOC_CONFIG_DIR/config.json"
+    else
+        log_error "AWOC configuration not found"
+        exit 1
+    fi
+}
+
+# Diagnose common issues
+cmd_doctor() {
+    log_info "Running AWOC diagnostics..."
+
+    # Check AWOC installation
+    if [[ -d "$AWOC_CONFIG_DIR" ]]; then
+        log_success "AWOC config found at ~/.config/awoc"
+    else
+        log_error "AWOC not installed"
+    fi
+
+    # Check PATH
+    if command -v awoc &> /dev/null; then
+        log_success "awoc command is in PATH"
+    else
+        log_warning "awoc command not in PATH"
+        echo "   Add to PATH: export PATH=\"\$HOME/.local/bin:\$PATH\""
+    fi
+
+    # Check for installations
+    echo ""
+    log_info "Searching for AWOC installations..."
+    local count=0
+    while IFS= read -r awoc_file; do
+        local dir=$(dirname $(dirname "$awoc_file"))
+        local client=$(jq -r '.client' "$awoc_file" 2>/dev/null)
+        echo "  • $dir (.${client})"
+        ((count++))
+    done < <(find ~ -name ".awoc" -type f 2>/dev/null | head -10)
+
+    if [[ $count -eq 0 ]]; then
+        log_info "No AWOC installations found"
+    else
+        log_success "Found $count installation(s)"
+    fi
+
+    echo ""
+    log_info "Diagnostics complete"
+}
+
+# Update AWOC
+cmd_update() {
+    log_info "Updating AWOC to latest version..."
+
+    if command -v curl &> /dev/null; then
+        curl -fsSL https://github.com/akougkas/awoc/raw/main/install.sh | bash
+    elif command -v wget &> /dev/null; then
+        wget -qO- https://github.com/akougkas/awoc/raw/main/install.sh | bash
+    else
+        log_error "Neither curl nor wget found. Please install one."
+        exit 1
+    fi
+
+    log_success "AWOC updated successfully"
+}
+
+# MCP (Model Context Protocol) management
+cmd_mcp() {
+    local subcommand="${1:-list}"
+    shift || true
+
+    # Check for MCP installer script
+    local mcp_installer="$AWOC_RESOURCES/scripts/mcp-installer.sh"
+    if [[ ! -f "$mcp_installer" ]]; then
+        log_error "MCP installer not found"
+        log_info "Run 'awoc update' to get MCP support"
+        exit 1
+    fi
+
+    case "$subcommand" in
+        list)
+            # List available MCP servers
+            bash "$mcp_installer" list
+            ;;
+        setup)
+            # Interactive MCP setup
+            local dir="."
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    -d|--dir)
+                        dir="$2"
+                        shift 2
+                        ;;
+                    *)
+                        shift
+                        ;;
+                esac
+            done
+            bash "$mcp_installer" setup "$dir"
+            ;;
+        enable)
+            # Enable specific MCP
+            local mcp_name="$1"
+            if [[ -z "$mcp_name" ]]; then
+                log_error "MCP name required"
+                echo "Usage: awoc mcp enable <mcp-name> [-d dir]"
+                exit 1
+            fi
+            shift
+
+            local dir="."
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    -d|--dir)
+                        dir="$2"
+                        shift 2
+                        ;;
+                    *)
+                        shift
+                        ;;
+                esac
+            done
+            bash "$mcp_installer" enable "$mcp_name" "$dir"
+            ;;
+        *)
+            log_error "Unknown MCP command: $subcommand"
+            echo "Usage: awoc mcp {list|setup|enable} [options]"
+            echo ""
+            echo "  list              - List available MCP servers"
+            echo "  setup -d <dir>    - Interactive MCP setup for project"
+            echo "  enable <name> -d <dir> - Enable specific MCP"
+            exit 1
+            ;;
+    esac
+}
+
+# Main command router
+main() {
+    case "${1:-help}" in
+        install)
+            shift
+            cmd_install "$@"
+            ;;
+        uninstall)
+            shift
+            cmd_uninstall "$@"
+            ;;
+        validate)
+            shift
+            cmd_validate "$@"
+            ;;
+        restore)
+            shift
+            cmd_restore "$@"
+            ;;
+        list)
+            cmd_list
+            ;;
+        mcp)
+            shift
+            cmd_mcp "$@"
+            ;;
+        config)
+            cmd_config
+            ;;
+        doctor)
+            cmd_doctor
+            ;;
+        update)
+            cmd_update
+            ;;
+        version|--version|-v)
+            show_version
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        *)
+            log_error "Unknown command: $1"
+            echo "Run: awoc help"
+            exit 1
+            ;;
+    esac
+}
+
+# Execute main function
+main "$@"

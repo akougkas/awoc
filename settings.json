@@ -1,12 +1,11 @@
 {
   "version": "0.1.0",
-  "model": "claude-opus-4-1-20250805",
   "includeCoAuthoredBy": false,
   "outputStyle": "development",
   "env": {
     "AWOC_MAINTAIN_PROJECT_WORKING_DIR": "1",
-    "BASH_MAX_TIMEOUT_MS": "120000",
-    "AWOC_MAX_OUTPUT_TOKENS": "8192",
+    "BASH_MAX_TIMEOUT_MS": "50000",
+    "AWOC_MAX_OUTPUT_TOKENS": "32768",
     "AWOC_SESSION_ID": "awoc-${RANDOM}",
     "AWOC_LOG_LEVEL": "INFO",
     "PROJECT_ROOT": "/home/akougkas/projects/awoc-claude-v2",
