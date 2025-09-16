@@ -239,52 +239,7 @@
       }
     }
   },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": {},
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/scripts/context-monitor.sh track ${AGENT:-unknown} tool_use ${ESTIMATED_TOKENS:-0} execution 2>/dev/null || echo 'Context monitor unavailable'"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": {},
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/scripts/context-monitor.sh check ${CURRENT_CONTEXT_TOKENS:-0} 2>/dev/null || true"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": {},
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/scripts/handoff-manager.sh save automatic gzip medium 2>/dev/null || echo 'Handoff save failed'"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": {},
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/scripts/handoff-manager.sh save emergency gzip critical 2>/dev/null || echo 'Emergency handoff failed'"
-          }
-        ]
-      }
-    ]
-  },
+  "hooks": {},
   "enterprise": {
     "enabled": false,
     "policy_enforcement": {
