@@ -240,37 +240,50 @@
     }
   },
   "hooks": {
-    "enabled": true,
     "PreToolUse": [
-      "./scripts/context-monitor.sh track ${AGENT:-unknown} tool_use ${ESTIMATED_TOKENS:-0} execution 2>/dev/null || echo 'Context monitor unavailable'",
-      "./scripts/context-intelligence.sh predict overflow ${CURRENT_CONTEXT_TOKENS:-0} ${TASK_TYPE:-medium} ${AGENT_COUNT:-1} 2>/dev/null || true"
+      {
+        "matcher": {},
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/context-monitor.sh track ${AGENT:-unknown} tool_use ${ESTIMATED_TOKENS:-0} execution 2>/dev/null || echo 'Context monitor unavailable'"
+          }
+        ]
+      }
     ],
     "UserPromptSubmit": [
-      "./scripts/context-monitor.sh check ${CURRENT_CONTEXT_TOKENS:-0} 2>/dev/null || true",
-      "./scripts/overflow-prevention.sh detect ${CURRENT_CONTEXT_TOKENS:-0} '{\"active_agents\":${AGENT_COUNT:-1}}' 2>/dev/null || true"
+      {
+        "matcher": {},
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/context-monitor.sh check ${CURRENT_CONTEXT_TOKENS:-0} 2>/dev/null || true"
+          }
+        ]
+      }
     ],
     "SessionEnd": [
-      "./scripts/handoff-manager.sh save automatic gzip medium 2>/dev/null || echo 'Handoff save failed'",
-      "./scripts/token-logger.sh report json today 2>/dev/null || true",
-      "./scripts/context-intelligence.sh learn update_models ~/.awoc/sessions 2>/dev/null || true"
+      {
+        "matcher": {},
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/handoff-manager.sh save automatic gzip medium 2>/dev/null || echo 'Handoff save failed'"
+          }
+        ]
+      }
     ],
     "PreCompact": [
-      "./scripts/handoff-manager.sh save emergency gzip critical 2>/dev/null || echo 'Emergency handoff failed'", 
-      "./scripts/context-optimizer.sh emergency ${CURRENT_CONTEXT_TOKENS:-0} 5 2>/dev/null || true"
-    ],
-    "ContextThreshold": {
-      "75": "./scripts/context-optimizer.sh predictive ${CURRENT_CONTEXT_TOKENS:-0} '{\"task_type\":\"${TASK_TYPE:-medium}\"}' 25 2>/dev/null || true",
-      "85": "./scripts/context-optimizer.sh reactive ${CURRENT_CONTEXT_TOKENS:-0} optimization medium 2>/dev/null || true",
-      "90": "./scripts/overflow-prevention.sh prevent ${CURRENT_CONTEXT_TOKENS:-0} '{\"risk_level\":\"high\"}' 2>/dev/null || true",
-      "95": "./scripts/overflow-prevention.sh cascade ${CURRENT_CONTEXT_TOKENS:-0} '{\"severity\":\"critical\"}' 2>/dev/null || true"
-    },
-    "IntelligenceHooks": {
-      "enabled": true,
-      "PatternDetection": "./scripts/pattern-analyzer.py analyze --session-file=${CONTEXT_DIR}/session_history.jsonl 2>/dev/null || true",
-      "OptimizationTrigger": "./scripts/context-optimizer.sh autonomous '{\"total_tokens\":${CURRENT_CONTEXT_TOKENS:-0},\"task_type\":\"${TASK_TYPE:-medium}\",\"active_agents\":${AGENT_COUNT:-1}}' 2>/dev/null || true",
-      "LearningUpdate": "./scripts/context-intelligence.sh learn patterns ${CONTEXT_DIR}/session_history.jsonl optimization_effectiveness 2>/dev/null || true",
-      "RiskAssessment": "./scripts/overflow-prevention.sh detect ${CURRENT_CONTEXT_TOKENS:-0} '{\"growth_velocity\":${GROWTH_VELOCITY:-0},\"agent_count\":${AGENT_COUNT:-1}}' 2>/dev/null || true"
-    }
+      {
+        "matcher": {},
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/handoff-manager.sh save emergency gzip critical 2>/dev/null || echo 'Emergency handoff failed'"
+          }
+        ]
+      }
+    ]
   },
   "enterprise": {
     "enabled": false,

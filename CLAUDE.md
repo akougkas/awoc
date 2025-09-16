@@ -242,6 +242,92 @@ When changing feature status:
 3. Update `QUICKSTART.md` - If changing basic usage
 4. Update this file - If changing development approach
 
+## Development & Debug Workflow
+
+### The Fix-Ship-Test Cycle
+
+When users report issues (like the hooks format problem):
+
+#### 1. Understand the Environment
+```bash
+# Two key directories:
+# Repository: /home/akougkas/projects/awoc-claude-v2  (source code)
+# Test: /tmp/awoc-testing                            (deployed instance)
+```
+
+#### 2. Fix in Repository
+Always fix issues in the source repository, never in test directories:
+```bash
+# Fix the source files
+edit settings.json      # Fix configuration issues
+edit awoc              # Update CLI logic
+edit install.sh        # Improve installation
+```
+
+#### 3. Smart Reinstallation
+The `awoc` CLI now supports intelligent reinstallation:
+```bash
+# Automatic fix propagation on reinstall
+awoc install -d /tmp/awoc-testing    # Auto-updates settings on reinstall
+
+# Force update for stubborn issues
+awoc install -d /tmp/awoc-testing -f # Force replaces settings
+```
+
+#### 4. Test Without Cheating
+- NEVER manually edit files in test directories
+- If installer doesn't propagate fixes, FIX THE INSTALLER
+- Keep the development cycle clean and reproducible
+
+### Key Lessons Learned
+
+#### Hooks Format Evolution (September 2025)
+Claude Code changed hooks format from simple strings to matcher objects:
+```json
+// Old (broken):
+"PreToolUse": ["command.sh"]
+
+// New (working):
+"PreToolUse": [{
+  "matcher": {},
+  "hooks": [{"type": "command", "command": "command.sh"}]
+}]
+```
+
+#### Installer Intelligence
+The `awoc` installer now detects reinstallations via `.awoc` marker files and automatically updates settings.json to ensure fixes propagate to users.
+
+## MCP Integration Opportunities
+
+AWOC can leverage Model Context Protocol (MCP) for enhanced capabilities:
+
+### Current MCP Ecosystem
+- **context7**: Provides real-time, version-specific documentation
+- **claude-context**: Makes entire codebase searchable context
+- **Enterprise MCP**: Microsoft and others building A2A protocols
+
+### Future AWOC+MCP Integration
+```yaml
+Potential MCP Servers for AWOC:
+- awoc-context: Full project awareness server
+- awoc-orchestrator: Multi-agent coordination via MCP
+- awoc-memory: Persistent context across sessions
+- awoc-templates: Domain-specific template server
+- awoc-domains: Serve domain packs dynamically
+```
+
+## Domain Packs Structure
+
+AWOC now includes a `domains/` directory for community contributions:
+```
+domains/
+├── coding/       # Programming-specific enhancements
+├── writing/      # Content creation tools
+└── [your-domain] # Your specialized configurations
+```
+
+Each domain can contain agents, commands, and workflows tailored to specific fields.
+
 ## Philosophy
 
 **Keep it honest**: Document what actually works, not what we hope will work.
@@ -251,6 +337,8 @@ When changing feature status:
 **User-first**: If users can't use it easily, it doesn't matter how clever it is.
 
 **Simplicity wins**: Complex orchestration can wait. Make basics rock-solid first.
+
+**Community-driven**: The best features come from real users solving real problems.
 
 ---
 
