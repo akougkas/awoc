@@ -63,7 +63,7 @@ import yaml, sys
 with open('$file', 'r') as f:
     data = yaml.safe_load(f)
     # Simple query support
-    keys = '$query'.replace('.[', '[').strip('.').split('.')
+    keys = \"$query\".replace('.[', '[').strip('.').split('.')
     result = data
     for key in keys:
         if '[' in key:
@@ -86,8 +86,8 @@ get_mcp_list() {
     if command -v yq &> /dev/null; then
         yq eval 'keys | .[]' "$MCP_REGISTRY" | grep -v "^#"
     else
-        # Fallback: extract top-level keys
-        grep "^[a-z_-]*:" "$MCP_REGISTRY" | cut -d':' -f1
+        # Fallback: extract top-level keys using awk which is more reliable
+        awk '/^[a-zA-Z0-9][a-zA-Z0-9_-]*:/ {sub(/:.*/, ""); print}' "$MCP_REGISTRY"
     fi
 }
 
@@ -118,20 +118,30 @@ show_available_mcps() {
 # Check environment variables
 check_env_vars() {
     local mcp_name="$1"
-    local env_vars=$(get_mcp_details "$mcp_name" "env_required[]")
+    local env_vars=$(get_mcp_details "$mcp_name" "env_required[].name" 2>/dev/null)
 
     if [[ -n "$env_vars" ]]; then
-        log_info "Required environment variables for $mcp_name:"
+        log_info "Checking environment variables for $mcp_name:"
+        local missing_vars=""
         for var in $env_vars; do
+            # Clean up the variable name
+            var=$(echo "$var" | tr -d ' ')
             if [[ -z "${!var:-}" ]]; then
                 log_warning "  $var is not set"
-                echo "    Add to your .env or shell profile:"
-                echo "    export $var='your-value-here'"
-                return 1
+                missing_vars="$missing_vars $var"
             else
                 log_success "  $var is set"
             fi
         done
+
+        if [[ -n "$missing_vars" ]]; then
+            echo ""
+            echo "    To set required environment variables:"
+            for var in $missing_vars; do
+                echo "    export $var='your-value-here'"
+            done
+            return 1
+        fi
     fi
     return 0
 }
@@ -144,12 +154,50 @@ generate_mcp_json_entry() {
     case "$type" in
         stdio)
             local command=$(get_mcp_details "$mcp_name" "command")
-            local args=$(get_mcp_details "$mcp_name" "args[]" | tr '\n' ' ')
+
+            # Get args as array
+            local args_json=""
+            local args_raw=$(get_mcp_details "$mcp_name" "args[]")
+
+            if [[ -n "$args_raw" ]]; then
+                local first_arg=true
+                while IFS= read -r arg; do
+                    [[ -z "$arg" ]] && continue
+                    if [[ "$first_arg" == "false" ]]; then
+                        args_json="${args_json}, "
+                    fi
+                    # Clean up the arg and quote it properly
+                    arg=$(echo "$arg" | tr -d '[]"' | xargs)
+                    args_json="${args_json}\"${arg}\""
+                    first_arg=false
+                done <<< "$args_raw"
+            fi
+
+            # Build env object
+            local env_json="{}"
+            local env_vars=$(get_mcp_details "$mcp_name" "env_required[].name" 2>/dev/null)
+
+            if [[ -n "$env_vars" ]]; then
+                env_json="{\n"
+                local first=true
+                for var in $env_vars; do
+                    var=$(echo "$var" | tr -d ' ')
+                    if [[ -n "${!var:-}" ]]; then
+                        if [[ "$first" == "false" ]]; then
+                            env_json="${env_json},\n"
+                        fi
+                        env_json="${env_json}        \"${var}\": \"${!var}\""
+                        first=false
+                    fi
+                done
+                env_json="${env_json}\n      }"
+            fi
+
             cat <<EOF
     "$mcp_name": {
       "command": "$command",
-      "args": [$(echo "$args" | sed 's/ /, /g' | sed 's/^/"/;s/$/"/;s/, /, "/g;s/, "$//')],
-      "env": {}
+      "args": [${args_json}],
+      "env": $env_json
     }
 EOF
             ;;
@@ -176,17 +224,17 @@ EOF
 
 # Interactive MCP selection
 select_mcps() {
-    show_available_mcps
+    show_available_mcps >&2
 
-    echo ""
-    echo -e "${BOLD}Select MCP servers to enable:${NC}"
-    echo "Enter numbers separated by commas (e.g., 1,3,5) or 'all' for all:"
-    echo "Press Enter with no selection to skip MCP setup."
-    echo ""
+    echo "" >&2
+    echo -e "${BOLD}Select MCP servers to enable:${NC}" >&2
+    echo "Enter numbers separated by commas (e.g., 1,3,5) or 'all' for all:" >&2
+    echo "Press Enter with no selection to skip MCP setup." >&2
+    echo "" >&2
     read -p "> " selection
 
     if [[ -z "$selection" ]]; then
-        log_info "Skipping MCP setup"
+        log_info "Skipping MCP setup" >&2
         return 1
     fi
 
@@ -205,7 +253,8 @@ select_mcps() {
         done
     fi
 
-    echo "${selected_mcps[@]}"
+    # Only output the selected MCPs to stdout
+    printf '%s\n' "${selected_mcps[@]}"
 }
 
 # Generate .mcp.json file
@@ -252,13 +301,17 @@ generate_env_template() {
     echo "" >> "$env_file"
 
     for mcp in "${mcps[@]}"; do
-        local env_vars=$(get_mcp_details "$mcp" "env_required[]")
+        local env_vars=$(get_mcp_details "$mcp" "env_required[].name" 2>/dev/null)
         if [[ -n "$env_vars" ]]; then
             has_env_vars=true
-            echo "# $mcp" >> "$env_file"
-            for var in $env_vars; do
-                echo "$var=" >> "$env_file"
-            done
+            echo "# === $mcp ===" >> "$env_file"
+            local setup_notes=$(get_mcp_details "$mcp" "setup_notes" 2>/dev/null)
+            [[ -n "$setup_notes" ]] && echo "# $setup_notes" >> "$env_file"
+            while IFS= read -r var; do
+                [[ -z "$var" ]] && continue
+                var=$(echo "$var" | tr -d ' ')
+                echo "${var}=your_${var,,}_here" >> "$env_file"
+            done <<< "$env_vars"
             echo "" >> "$env_file"
         fi
     done
@@ -316,7 +369,10 @@ setup_mcps() {
     fi
 
     # Select MCPs
-    local selected_mcps=($(select_mcps))
+    local selected_mcps=()
+    while IFS= read -r mcp; do
+        [[ -n "$mcp" ]] && selected_mcps+=("$mcp")
+    done < <(select_mcps)
 
     if [[ ${#selected_mcps[@]} -eq 0 ]]; then
         exit 0

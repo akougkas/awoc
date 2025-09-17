@@ -1,4 +1,4 @@
-![AWOC Banner](https://via.placeholder.com/1200x300/4A90E2/FFFFFF?text=AWOC+2.0+-+Agentic+Workflows+Orchestration+Cabinet)
+![AWOC Banner](awoc_banner.png)
 
 <div align="center">
 
