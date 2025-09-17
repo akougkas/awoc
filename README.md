@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# 🚀 AWOC - Agentic Workflows Orchestration Cabinet
+# AWOC - Agentic Workflows Orchestration Cabinet
 
 **Transform your AI coding assistants into powerhouses of specialized agents, smart workflows, and context-aware orchestration**
 
@@ -18,11 +18,11 @@
 
 ---
 
-> **🎉 New in v2.0**: Smart reinstallation, MCP-ready architecture, community domain packs, 70% token optimization, and the `awoc` CLI is now included in the repo!
+> ** New in v2.0**: Smart reinstallation, MCP-ready architecture, community domain packs, 70% token optimization, and the `awoc` CLI is now included in the repo!
 
 AWOC brings enterprise-grade agent orchestration to your favorite AI coding environments. With a simple command, deploy a suite of specialized agents, advanced context management, and intelligent workflows directly into your projects.
 
-## 🎯 Why AWOC?
+## Why AWOC?
 
 AI coding assistants are powerful, but they're general-purpose. AWOC transforms them into specialized, context-aware orchestration systems that:
 
@@ -32,7 +32,7 @@ AI coding assistants are powerful, but they're general-purpose. AWOC transforms 
 - **Stay Organized**: Project-specific configurations that travel with your code
 - **Think Efficiently**: Token optimization that reduces costs by up to 70%
 
-## 🌟 Key Features
+## Key Features
 
 ### Multi-Client Architecture
 AWOC isn't tied to a single AI platform. Deploy the same powerful orchestration to:
@@ -55,7 +55,7 @@ Six expert agents, each optimized for specific tasks:
 - **Pattern Learning**: ML-powered optimization that adapts to your workflow
 - **Session Recovery**: Never lose work with automatic state preservation
 
-## 📦 Installation
+## Installation
 
 AWOC installs cleanly in your user space - no sudo required, no system files modified.
 
@@ -77,7 +77,7 @@ cd awoc
 ./install.sh
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Create a New Project
 
@@ -121,7 +121,7 @@ Open Claude Code (or supported client) in your project directory. Your enhanced 
 /delegate              # Coordinate multiple agents
 ```
 
-## 🎨 Project-First Philosophy
+## Project-First Philosophy
 
 AWOC believes in project-specific configurations:
 
@@ -147,7 +147,7 @@ awoc install -c claude -d ~/
 # ⚠️ You'll see a warning - global installation should be minimal
 ```
 
-## 🛠️ Commands
+## Commands
 
 ```bash
 awoc install -c <client> -d <dir>   # Deploy to project
@@ -175,7 +175,7 @@ awoc install -d .
 awoc install -d . -f
 ```
 
-## 🔄 Smart Workflows
+## Smart Workflows
 
 AWOC enables sophisticated multi-agent orchestration:
 
@@ -208,7 +208,7 @@ AWOC learns from your patterns:
 Automatically suggests improvements
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 AWOC uses a clean, modular design:
 
@@ -228,7 +228,7 @@ AWOC uses a clean, modular design:
     └── settings.json
 ```
 
-## 🔐 Safety & Control
+## Safety & Control
 
 - **Automatic Backups**: Every change is backed up
 - **Easy Restoration**: `awoc restore -d .` to rollback
@@ -236,7 +236,7 @@ AWOC uses a clean, modular design:
 - **Complete Removal**: `rm -rf ~/.config/awoc ~/.local/bin/awoc`
 - **Project Isolation**: Each project is independent
 
-## 🚦 Roadmap
+## Roadmap
 
 ### Available Now
 - ✅ Claude Code integration
@@ -252,7 +252,7 @@ AWOC uses a clean, modular design:
 - 🔄 Cloud sync
 - 🔄 Team sharing
 
-## 🌍 Community & Customization
+## Community & Customization
 
 ### Your Domain, Your Agents
 
@@ -308,7 +308,7 @@ Built something amazing? Your customizations could help thousands:
 
 *Be the first to contribute your domain pack!*
 
-## 🚀 Building on AWOC
+## Building on AWOC
 
 ### Quick Customization Guide
 
@@ -371,32 +371,15 @@ awoc mcp add claude-context  # Codebase search
 awoc mcp add your-server     # Your custom MCP server
 ```
 
-## 🏆 Success Stories
-
-### "AWOC transformed our ML pipeline development"
-> *"We customized AWOC with domain-specific agents for data preprocessing, model training, and deployment. What used to take days now takes hours."*
->
-> — **Dr. Sarah Chen**, ML Engineer at TechCorp
-
-### "Perfect for academic research"
-> *"Created custom agents for literature review, data analysis, and paper writing. Shared with 50+ researchers in our department."*
->
-> — **Prof. James Miller**, Stanford University
-
-### "Game development on steroids"
-> *"Built Unity-specific agents that understand our entire codebase. Level design iteration speed increased 3x."*
->
-> — **Alex Rivera**, Indie Game Developer
-
-## 🤝 Contributing
-
+## Contributing
 AWOC thrives on community contributions! We especially welcome:
-
+- [Contribution Guide](CONTRIBUTING.md)
+  
 ### Priority Contributions
-- 🎯 **Domain-Specific Agent Packs**: Biology, Finance, Education, Art, Music
-- 🔧 **Tool Integrations**: Jupyter, Docker, Kubernetes, AWS, Azure
-- 🌐 **Language Support**: Python specialists, Rust experts, Go gurus
-- 📚 **Documentation**: Tutorials, videos, blog posts about your AWOC setup
+- **Domain-Specific Agent Packs**: Biology, Finance, Education, Art, Music
+- **Tool Integrations**: Jupyter, Docker, Kubernetes, AWS, Azure
+- **Language Support**: Python specialists, Rust experts, Go gurus
+- **Documentation**: Tutorials, videos, blog posts about your AWOC setup
 
 ### How to Contribute
 
@@ -430,25 +413,12 @@ AWOC thrives on community contributions! We especially welcome:
 - Write a tutorial for your use case
 - Translate documentation to your language
 
-#### Intermediate Projects
-- Build an MCP server for AWOC
-- Create a workflow automation suite
-- Develop testing frameworks for agents
-- Add support for new AI platforms
-
 #### Advanced Projects
 - Implement agent memory systems
 - Build multi-agent orchestration protocols
-- Create visual agent builders
+- Create visual progress bar formutli-agent builders
 - Develop agent performance analytics
 
-### Recognition
-
-Top contributors receive:
-- 🏅 Contributor badge in README
-- 📢 Feature announcement credits
-- 🎁 Early access to new features
-- 💬 Direct collaboration with core team
 
 ## 📄 License
 
@@ -464,28 +434,10 @@ Special thanks to:
 - Domain experts sharing their specialized configurations
 - Everyone who's starred, forked, or contributed to AWOC
 
-## 💬 Join the Movement
-
-### Get Involved
-
-- **Discord**: [Join our community](https://discord.gg/awoc-community) *(Coming Soon)*
-- **Discussions**: [GitHub Discussions](https://github.com/akougkas/awoc/discussions)
-- **Twitter/X**: Follow [@awoc_ai](https://twitter.com/awoc_ai) for updates
-- **Blog**: Read about AWOC use cases on [our blog](https://awoc.ai/blog)
-
 ### Stay Updated
 
 - ⭐ **Star this repo** to stay updated with new features
 - 👀 **Watch releases** for version announcements
-- 📧 **Newsletter**: [Subscribe for monthly updates](https://awoc.ai/newsletter)
-
-### Quick Links
-
-- 📖 [Documentation Wiki](https://github.com/akougkas/awoc/wiki)
-- 🎥 [Video Tutorials](https://youtube.com/@awoc-tutorials)
-- 💡 [Feature Requests](https://github.com/akougkas/awoc/issues/new?template=feature_request.md)
-- 🐛 [Report Issues](https://github.com/akougkas/awoc/issues/new?template=bug_report.md)
-- 🤝 [Contribution Guide](CONTRIBUTING.md)
 
 ---
 
@@ -510,6 +462,6 @@ awoc install -d .
 
 *Built by developers, for developers, with ❤️*
 
-[Get Started](#-getting-started) • [Join Community](#-join-the-movement) • [Contribute](#-contributing)
+[Get Started](#-getting-started) • [Contribute](#-contributing)
 
 </div>
