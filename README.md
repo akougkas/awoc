@@ -12,8 +12,6 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Community](https://img.shields.io/badge/Community-Growing-orange.svg)](https://github.com/akougkas/awoc/discussions)
 
-[**Quick Start**](#-getting-started) • [**Features**](#-key-features) • [**Community**](#-community--customization) • [**Contributing**](#-contributing) • [**Documentation**](https://github.com/akougkas/awoc/wiki)
-
 </div>
 
 ---
